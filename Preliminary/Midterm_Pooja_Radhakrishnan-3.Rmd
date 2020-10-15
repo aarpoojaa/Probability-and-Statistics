@@ -1,0 +1,261 @@
+---
+title: "Midterm Exercises"
+author: "Cathy Durso"
+date: "Winter, 2019"
+output:
+  word_document: default
+  html_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+#library(tidyverse)
+```
+
+## Instructions
+
+Please work these problems on your own. You may use web searches, but not interactive methods such as asking others online or in person. In questions with code blocks, full credit will reserved for effective use of R to reach a correct solution.
+
+## Questions
+
+1. Construct a reasonable, standard model for rolling a fair (each face is equally likely) ten-sided die twice and recording the values in order. You don't have to explain the model, just provide the values requested below.
+  
+  What is the probability of  single outcome $\left(a,b\right)$ with $a,b\in\{1,2,3,...10\}$? (5 points)
+    
+    P(a) = 1/10
+    
+    P(b) = 1/10
+    
+    By theory, if two events a and b are independent,
+    
+    P(a,b) = P(a) * P(b)
+    
+          = 1/10 * 1/10
+    
+          = 1/100
+    
+  What is the probability of the event ${\left(a,b\right)|a\neq b}$? (5 points)
+    
+    For this problem, the sample space S = 10 * 10 ==> 100
+    
+    S = {(1,1),(1,2),(1,3)......(10,10)}
+    
+    (a,b) = S - {(1,1),(2,2),(3,3)....(10,10)}  => 90
+    
+    So, P(a,b) = 90/100   => 9 / 10
+
+2. The function defined by $f(x)=cx$ for $x\in[0,1]$ and $f(x)=0$ otherwise is the probability density function of a continuous random variable. What is the value of $c$? (10 points)
+########################################
+          -  cx , x in [0,1]
+  f(x) = |
+          -   0 ,  otherwise
+########################################
+
+  $\int_{-\infty}^{+\infty} f(x)dx  = 1$
+
+  $\int_{0}^{1} f(x)dx  = 1$
+    
+  $\int_{0}^{1} cxdx  = 1$
+
+    c * [ (1/2) - 0 ] = 1
+    
+   =>  c = 2
+    
+
+3. Construct a reasonable model for flipping a fair coin 4 times and recording the results in order. You don't have to explain the model, just provide the information requested below. 
+
+ 	Are the event that the number of heads is even and the event that the first flip is a head independent? (5 points)
+
+ 	Are the event that the number of heads is at least 3 and the event that the first flip is a head independent? (5 points)
+
+
+```{r}
+evenheads = dbinom( 2, 4, 0.5 ) + dbinom( 4, 4, 0.5 )
+
+atleast3heads = dbinom( 3, 4, 0.5 ) + dbinom( 4, 4, 0.5 )
+
+```
+
+Total number of events  => Sample Space (S) => 2^4  => 16
+
+A) Outcomes of even number of heads and first flip head => {HHHH, HHTT, HTHT, HTTH}
+
+          n(A) = 4
+
+B) Outcomes of first flip head => {HHHH, HHTT, HTHT, HTTH, HHHT, HHTH, HTHH, HTTT}
+
+          n(B) = 8
+
+C) Outcomes of even number of heads and atleast 3 heads => {HHHH, HHHT, HHTH, HTHH}
+
+          n(C) = 4
+       
+       P(firstfliphead) = 8 / 16 = 0.5
+                          
+       By theory, if two events a and b are independent,
+    
+       P(a,b) = P(a) * P(b)
+       
+       P(evenheads and firstfliphead) = 4 / 16 = 0.25
+       
+       P(evenheads) * P(firstfliphead) = 0.5 * 0.4375 = 0.21875
+       
+       Both are not equal, => They are not independent!
+       
+       Similarly,  P(atleast3heads and firstfliphead) = 4 / 16 = 0.25
+      
+       P(atleast3heads) * P(firstfliphead) = 0.3125 * 0.5 = 0.15625
+      
+       Both are not equal, => They are not independent!
+ 
+    
+4. Consider a continuous random variable $X$ with the probability density function defined by $f(x)=\frac{3}{4}\left(1-x^2\right)$ for $x\in[-1,1]$ and $f(x)=0$ otherwise. What is the value of the cumulative distribution of $X$, $F\left(t\right)$, at $t=\frac{1}{2}$? (5 points)
+#################################################
+          -  3 / 4(1 - x ^ 2) , x in [-1,1]
+  f(x) = |
+          -  0, otherwise
+#################################################
+
+  $\int_{-\infty}^{+\infty} f(x)dx  = 1$
+    
+  But x lies in range [-1, 1] and f(x) is 0 Otherwise,
+    
+  $\int_{-1}^{1} f(x)dx  = 1$
+
+  The cumulative distribution at t = 1/2 is what we require. Therefore, 
+
+  $= \int_{-1} ^ {1/2} f(x)dx$
+    
+  $= \int_{-1} ^ {1/2} 0.75(1 - x ^ 2)dx$
+    
+  $= \lim_{x -> 1/2} 0.75(x - x ^ 3 / 3) - \lim_{x -> -1} 0.75(x - x ^ 3 / 3)$
+    
+    = 0.34375 - (-0.5)
+
+    = 0.84375
+
+5. If you model data in which there are 100 trials, of which 36 are successes, as a sample from the Binomial distribution with the size parameter equal to 100, what is the maximum likelihood estimate for the probability parameter? (5 points)
+
+```{r}
+library(stats4)
+fun = function(p) {
+-dbinom(36,100,p)
+} 
+#Maximum Likelihood Estimate
+model = mle(minuslogl = fun, start = list(p = 0), method = "Brent", lower = 0,upper = 1)
+probability <- coef(model)
+print(probability[1])
+
+```
+
+6. If you model the "total" column in the "animal_stats_compact.csv" as a sample from a Normal distribution, what are the maximum likelihood values of $\mu$ and $\sigma^2$? (Note that this may not be a very accurate model.) (10 points)
+
+```{r}
+library(stats4)
+dat = read.csv("animal_stats_compact.csv")
+
+total = dat$total
+
+NegativeLogLikelihood = function(mu,sd) {
+-sum(dnorm(total,mean=mu,sd=sd,log=TRUE))
+}
+
+model = mle(minuslogl= NegativeLogLikelihood, start=list(mu=0,sd=1), method="Nelder-Mead")
+m <- coef(model)
+
+mu <- m[1]
+sd <- m[2]
+
+print(mu)
+print(sd)
+#Variance
+print(sd*sd)
+
+```
+
+7. In the data from #6, if you model the "dog_surg" variable as a linear function of the "dog" variable, what slope and intercept give the line with the least squares best fit? (You may use a built-in function for this or the formulas derived in class) (10 points)
+
+```{r}
+model = lm(formula = dog_surg~dog, data = dat)
+coef = model$coefficients
+print("Best fit line's slope: ")
+print(coef[2])
+print("Best fit line's intercept:")
+print(coef[1])
+
+```
+
+8. Make a scatterplot with the "dog" variable on the horizontal axis and the "dog_surg" variable on the vertical axis. Add the line computed in #7. (If you used the built-in function for #7, please extract the values of the slope and intercept from the fitted model object, rather than using copy-paste.) (5 points)
+
+```{r}
+library(ggplot2)
+plott = ggplot()+
+  geom_point(aes(dat$dog, dat$dog_surg), color = "blue") + 
+  geom_abline(intercept = coef[1],slope = coef[2]) +
+  ggtitle("Line of Best Fit") + 
+  xlab("dog") + 
+  ylab("dog_surg")
+plott
+
+```
+
+9. What is the total number of dogs in each city? (To do this without looping through the city values, you can use "summarize" from dplyr, with group_by.) (5 points)
+
+```{r}
+library(dplyr)
+dat_frame = dat[c(1,5)]
+dat_frame %>%
+  group_by(city) %>%
+  summarize(sum(dog))
+```
+
+
+10. What is the probability that a Normal random variable with $\mu=10$ and $\sigma^2=4$ lies between 11 and 12? (5 points)
+
+```{r}
+result = pnorm(12, mean = 10, sd = sqrt(4)) - pnorm(11, mean = 10, sd = sqrt(4))
+print(result)
+```
+
+11. At what value is the cumulative distribution of a Normal random variable with $\mu=10$ and $\sigma^2=4$ equal to 0.80? (5 points)
+
+```{r}
+result = qnorm(0.80, mean = 10, sd = sqrt(4))
+print(result)
+```
+
+12. Set the random seed equal to 12345. Sample the Binomial distribution with size equal to 12 and probability of success equal to 0.5, Binom(12,0.5), ten times. Display the resulting numbers. (5 points)
+
+```{r}
+set.seed(12345)
+result = rbinom(10, 12, 0.5)
+print(result)
+```
+13. Again, set the random seed to 12345. Sample the integers between $\{1,2,...50\}$ ten times without replacement. What is the last value in the sample? (5 points)
+
+```{r}
+set.seed(12345)
+result = sample(1:50, 10, replace = FALSE)
+print(result[10])
+```
+14. Plot the standard Normal density curve, the Student's t density curve (the function dt) for df=5 in green, and the Student's t density curve for df=20 in orange. (5 points)
+
+```{r}
+curve(dt(x,5), from = -6, to = 6, col = "green", xlab = "Quantile", ylab = "Density", lwd = 2)  
+curve(dt(x,20), from = -6, to = 6, col = "orange", add = TRUE, lwd = 2)
+curve(dnorm(x), from = -6, to = 6, col = "red", add = TRUE, lwd = 2 )
+legend("topleft", legend = c("DF = 5", "DF = 20", "Normal Curve"), col = c("green", "orange", "red"), lwd = 2)
+```
+
+15. Set the random seed to 12345 again. Generate a sample of size 100 from the uniform distribution on [-10,10] and plot the histogram using the binwidth=1 and the "..density.." aes. On this, plot the horizontal line at height 1/20. We haven't used the geom for a horizontal line. You will need to identify it and figure out the syntax yourself.) (5 points)
+
+```{r}
+set.seed(12345)
+samp = sample(seq(-10, 10, by = 1), 100, replace = TRUE)
+df = data.frame(value = samp)
+graph = ggplot(df, aes(x = value)) + geom_histogram(aes( y = ..density..), binwidth = 1) + geom_hline(yintercept = 1/20)
+graph
+```
+
+

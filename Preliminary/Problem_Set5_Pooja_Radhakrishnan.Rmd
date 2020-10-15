@@ -1,0 +1,333 @@
+---
+title: "Assignment 5"
+author: "Pooja Radhakrishnan"
+date: "26 February 2019"
+output:
+  word_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(knitr)
+library(ggpubr)
+```
+
+## Introduction
+
+Please complete the following tasks regarding the data in R. Please generate a solution document in R markdown and upload the .Rmd document and a rendered  .doc, .docx, or .pdf document.  Your work should be based  on the data's being in the same folder as the .Rmd file. Please turn in your work on Canvas. Your solution document should have your answers to the questions and should display the requested plots.
+
+These questions were rendered in R markdown through RStudio (<https://www.rstudio.com/wp-content/uploads/2015/02/rmarkdown-cheatsheet.pdf>, <http://rmarkdown.rstudio.com> ).
+
+
+## Question 1
+
+The precipitation data in "boulder_precip.txt" are precipitation values for Boulder, CO from https://www.esrl.noaa.gov/psd/boulder/Boulder.mm.precip.html. Precipitation includes rain, snow, and hail. Snow/ice water amounts are either directly measured or a ratio of 1/10 applied for inches of snow to water equivalent. The symbol "Tr" represents a trace amount of precipitation. Observations marked by a "*" were made at a non-standard site.
+
+In this question, you will read in the data from "boulder_precip.txt" and format it. The data are tab-separated. In the formatting steps, the string manipulation commands in the "stringr"" package, part of "tidyverse" may be helpful. The functions "str_to_lower", "str_detect", "str_replace", and "str_replace_all" are particularly relevant. The dplyr function "mutate _all" may be useful.
+
+This problem is intended as practice in light-duty data formatting. Ordinarily, one would examine the data, decide what formatting needed to be done, cary out the formatting, then use the data in analyses. For educational purposes, the problem directs you through several formatting steps. The data for the remaining porblems will be provided separately to enable you to work on those before completing question 1.
+
+The code provided below reads in the precipitation data. Most columns are assigned the string class. 
+
+```{r}
+dat<-read.table("boulder_precip.txt",stringsAsFactors = FALSE,sep="\t",header=TRUE)
+
+```
+
+
+### Question 1, part 1 
+(1 point)
+
+Replace all column names with all lower case versions. For example, "TOTAL" becomes "total". Please use a function to do this. Note that the names of a data frame dat can be accessed and modified using the names(dat) syntax. Verify that the reformatting succeeded by outputting the names of the columns using the command "names(dat)".
+
+```{r}
+colnames(dat)<-str_to_lower(colnames(dat),locale = "en")
+print(names(dat))
+```
+
+
+### Question 1, part 2
+(1 point)
+    
+Replace all occurrences of "Tr" with 0. Verify that this was successful by running the command "sum(str_detect(unlist(dat),"Tr"))".
+
+```{r}
+#detecting number of occurences
+library(anchors)
+sum(str_detect(unlist(dat),"Tr"))
+#replacement
+dat<-replace.value(dat,colnames(dat),from="Tr",to="0",verbose=FALSE)
+#validation
+sum(str_detect(unlist(dat),"Tr"))
+```
+
+
+
+
+### Question 1, part 3
+(2 points)
+    
+Make a boolean vector that indicates which rows have at least one "\*". Then remove all "\*"s in "dat". Note that  "\*" is a special character in string manipulation and must be proceeded by two back slashes to be used literally, "\\\\*". This last instruction should be read in the rendered document, because back slashes and stars are also special characters in R markdown. Please print out the years that include non-standard observations. Also, please verify that no "\*"s remain in the data set by running the command below.
+
+```{r}
+#detect number of occurences with '\*'
+sum(str_detect(unlist(dat),"\\*"))
+
+a=list(nrow(dat))
+for(i in c(1:nrow(dat))){
+a[i]=any(str_detect(dat[i,],"\\*"))
+}
+#removal
+for(i in c(1:nrow(dat))){
+if(a[i]==TRUE){
+  print(dat[i,1])
+}
+}
+
+```
+
+
+```{r}
+dat=data.frame(apply(dat,2,function(x){
+                              x<-gsub("\\*","",x)}))
+
+verify<-sum(str_detect(unlist(dat),"\\*"))
+if(verify==0){
+  print("Success!")
+}
+```
+
+
+### Question 1, part 4
+(2 points)
+
+Set all precipitation columns to be of "numeric" class. Make the "year" column to be of class "integer". Please verify the success of this by running "sapply(dat,class)". Also, run "sum(is.na(dat))" to verify that all entries could be converted to numeric values.
+
+```{r}
+#making 'year' column as type 'integer'
+dat[,1]<-as.integer(as.character(dat[,1]))
+#setting precipitation columns to 'numeric' type
+for(i in c(2:length(colnames(dat)))){
+  dat[,i]<-as.numeric(as.character(dat[,i]))
+}
+sapply(dat,class)
+sum(is.na(dat))
+
+```
+
+
+### Question 1, part 5
+(2 points)
+    
+Create another data set dat.trim that has only those years in which all measurements were made at a standard site. Please display the mean total precipitation for the trimmed data set.
+
+
+```{r}
+#creating data frame which has only the specified years
+dat.trim=data.frame()
+for(i in c(1:nrow(dat))){
+if(a[i]==FALSE){
+  dat.trim=rbind(dat.trim,dat[i,])
+}
+}
+m <- mean(dat.trim$total)
+cat("Mean:",m)
+```
+
+### Question 1, Part 6
+(2 points)
+
+Are all the years between 1893 and 2018 represented in the untrimmed data? Please check this using code, not by hand. 
+
+```{r}
+print(identical(c(1893:2018),dat.trim$year))
+```
+
+
+## Question 2
+
+### Question 2, part 1
+(5 points)
+
+The point of this question is to study the extent to which total precipitation is one year is more like the total in the following year than it is like the total in a randomly selected year. The question uses a provided data set "dat_full.csv" like (but not exactly like) the one generated in question 1. A preliminary visualization is provided.
+
+Please calculate the mean of the absolute value of the difference between the total precipitation in each odd row and the following even row. 
+
+A matrix of 10,000 samples of the even indices is provided below. Please also calculate the mean of the absolute value of the difference between the total precipitation in odd rows and each
+simulated even row generated by using the rows given by indices in a row of "mat" in the order in "mat".
+
+Does comparison of the observed difference in successive years to the simulated differences provide strong evidence against the hypothesis that the totals in successive years are unrelated?
+
+```{r}
+dat <- read.csv("dat_full.csv")
+ggplot(data = dat, aes(x = year, y = total))+ geom_line()+ geom_point()
+n <- nrow(dat)
+indices.even <- seq(2, n, by = 2)
+l <- length(indices.even)
+set.seed(345678)
+mat <- matrix(sample(indices.even, 10000*l , replace = TRUE), ncol = l)
+
+
+next_diff = vector('numeric', length = 10000)
+rand_diff = vector('numeric', length = 10000)
+odd = dat$total[seq(1, 124, 2)]
+even = dat$total[seq(2, 124, 2)]
+
+next_diff = abs(odd - even)
+mean_next_diff = mean(next_diff)
+
+for ( i in 1:length(rand_diff)){
+  temp = mean(abs(odd - dat$total[mat[i,]]))
+  rand_diff[i] = temp
+}
+mean_rand_diff = mean(rand_diff)
+
+print(mean_next_diff)
+print(mean_rand_diff)
+cat("\nYes. The observed difference in successive years to the simulated differences provide evidence against the hypothesis that the totals in successive years are unrelated.")
+```
+
+
+
+
+### Question 2, Part 2
+(5 points)
+
+Please repeat the analysis from part 2 using dat\$jul-dat\$aug in place of dat\$total, then dat\$jan-dat\$jul in place of dat$total. Please use the same "mat".
+
+```{r}
+even1 = dat$jul[seq(2, 124, 2)] - dat$aug[seq(2, 124, 2)]
+odd1 = dat$jul[seq(1, 124, 2)] - dat$aug[seq(1, 124, 2)]
+mean1 = mean(abs(odd1 - even1))
+print(mean1)
+d1 = vector('numeric', length = 10000)
+for ( i in 1:length(d1)){
+  d1[i] = mean(abs(odd1 - (dat$jul[mat[i,]] - dat$aug[mat[i, ]])))
+}
+print(mean(d1))
+
+even2 = dat$jan[seq(2, 124, 2)] - dat$jul[seq(2, 124, 2)]
+odd2 = dat$jan[seq(1, 124, 2)] - dat$jul[seq(1, 124, 2)]
+mean2 = mean(abs(odd2 - even2))
+print(mean2)
+d2 = vector('numeric', length = 10000)
+for ( i in 1:length(d2)){
+  d2[i] = mean(abs(odd2 - (dat$jul[mat[i,]] - dat$jan[mat[i, ]])))
+}
+print(mean(d2))
+```
+
+## Question 3
+
+### Question 3, part 1
+(4 points)
+
+Below, a subset dat.5 of the observations in "dat_ok.csv" is selected by taking the years divisible by 5. (We are using the smaller data set partially to reduce dependence among the observations, if any. Also, the Student's t is typically a small-to-moderate sample test, so a smaller sample is used for pedagogic reasons.) Visually assess the Normality of the annual differences between jan and jul in dat.5.  Does the distribution of the annual difference appear to be approximately Normal?
+
+Do the same for the annual differences between jul and aug.
+
+```{r}
+library(ggpubr)
+dat.trim = read.csv("dat_ok.csv")
+dat.5 = subset(dat.trim, year%%5==0)
+ggqqplot(dat.5$jan - dat.5$jul)
+ggqqplot(dat.5$jul - dat.5$aug)
+cat("For both the cases (Jan-Jul, Jul-Aug), all the points fall approximately along the reference line.
+    Therefore,
+    We can assume normality.")
+```
+
+
+### Question 3, part 2
+(3 points)
+
+Use the single sample Student's t test on the difference between the column dat.5\$jan and the column dat.5\$jul to test the hypothesis that difference of the precipitation in January and July of the same year has mean equal to 0. Please interpret your results, including your thoughts on whether the hypotheses of the test are satisfied. 
+
+Please find the 95% confidence interval for the difference.
+
+```{r}
+t<-t.test(dat.5$jan - dat.5$jul,conf.level = 0.95)
+t
+int = t$conf.int
+cat("95% confidence intervals:", int)
+cat("\n Since the p value is very small, we reject the null hypothesis. So we select the alternative hypothesis: true mean is not equal to 0. The scale of the measurement is continuous.
+Therefore,
+The difference values are normally distributed, So all the hypothesis of the test are satisfied.")
+
+```
+
+
+### Question 3, part 3
+(3 points)
+
+Use the single sample Student's t test on the difference between the column dat.5\$jul and the column dat.5\$aug to test the hypothesis that difference of the precipitation in July and August of the same year has mean equal to 0. Please interpret your results, including your thoughts on whether the hypotheses of the test are satisfied. 
+
+Please find the 99% confidence interval for the difference. Note this is not the default for "t.test".
+
+```{r}
+t2<-t.test(dat$jul - dat$aug,conf.level = 0.99)
+t2
+int2 = t2$conf.int
+cat("99% confidence intervals:", int2)
+cat("\n Since the p value is very small, we reject the null hypothesis. So we select the alternative hypothesis: true mean is not equal to 0. The scale of the measurement is continuous.
+Therefore,
+The difference values are normally distributed, So all the hypothesis of the test are satisfied.")
+```
+
+
+
+## Question 4
+
+### Question 4, part 1
+(5 points)
+
+Please apply the Wilcoxon signed rank test to the difference between the column dat.5\$jul and the column dat.5\$aug to test the hypothesis that difference of the precipitation in July and August of the same year has mean equal to 0. Please interpret your results, including your thoughts on whether the hypotheses of the test are satisfied. 
+
+```{r}
+library(MASS)
+dat.trim = read.csv("dat_ok.csv")
+dat.5 = subset(dat.trim, year%%5==0)
+x = dat.5$jul - dat.5$aug
+wilcox.test(x)
+cat("The p value is very small, which leads to the conclusion that the null hypothesis can be rejected. The difference of precipitation has a mean not equal to zero. The data is collected from the same population, with a pair chosen independently. The data is measured in an interval scale because there are defined values for both the highest and lowest precipitation.")
+```
+
+
+
+### Question 4, part 2
+(5 points)
+
+Please apply the Wilcoxon signed rank test to the difference between the column dat.5\$jan and the column dat.5\$jul to test the hypothesis that difference of the precipitation in January and July of the same year has mean equal to 0. Please interpret your results, including your thoughts on whether the hypotheses of the test are satisfied.
+
+```{r}
+y = dat.5$jan - dat.5$jul
+wilcox.test(y)
+cat("The p value is very small, which leads to the conclusion that the null hypothesis can be rejected. The difference of precipitation has a mean not equal to zero. The data is collected from the same population, with a pair chosen independently. The data is measured in an interval scale because there are defined values for both the highest and lowest precipitation.")
+
+```
+
+## Question 5
+(10 points)
+
+Please take 10000 bootstrap samples of dat.5, that is, sample the rows of the data set with replacement to create a simulated data set of the same size as the original. Create bootstrap intervals for the mean of the difference between the column dat.5\$jan and the column dat.5\$jul to test the hypothesis that difference of the precipitation in January and July of the same year has mean equal to 0. For now, please code the sampling yourself and use quantiles of the values from the samples for lower and upper end points, rather than using the "boot" package. Please compare this interval to the one obtained using the t-test. 
+
+```{r}
+
+interval.bootstrap <- function(s, pct, reps){
+	n <- length(s)
+	q <- numeric(reps)
+for(i in 1:reps){
+	  temp = s[sample(nrow(s), length(s), replace = TRUE), ]
+		q[i] <- mean(temp$jan - temp$jul)
+	}
+	return(quantile(q ,c(pct / 200, 1 - pct / 200)))
+}
+
+interval.bootstrap(dat.5, 5, 10000)
+cat("The confidence intervals obtained by sampling via bootstrap is approximately the same as that of intervals obtained using t-test as obtained in the question above.")
+```
+
+
+

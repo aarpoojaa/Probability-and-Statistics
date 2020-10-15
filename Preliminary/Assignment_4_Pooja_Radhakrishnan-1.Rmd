@@ -1,0 +1,179 @@
+---
+title: "Problem Set 4"
+author: "Pooja Radhakrishnan"
+date: "18 February 2019"
+output:
+  word_document: default
+  html_document: default
+---
+
+These questions were rendered in R markdown through RStudio (<https://www.rstudio.com/wp-content/uploads/2015/02/rmarkdown-cheatsheet.pdf>, <http://rmarkdown.rstudio.com> ).
+
+Please complete the following tasks regarding the data in R. Please generate a solution document in R markdown and upload the .Rmd document and a rendered  .doc, .docx, or .pdf document.  Your work should be based  on the data's being in the same folder as the .Rmd file. Please turn in your work on Canvas. Your solution document should have your answers to the questions and should display the requested plots.
+
+
+```{r include=FALSE }
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(knitr)
+library(HistData)
+```
+
+1. (The Trial of the Pyx) The London Mint, by the 1200's and through the 1800's, conducted quality control tests on the minted gold coins, both for purity and weight. The standards made allowance for variability in the weight of the minted coins. The standards for weight were in terms of a target weight $T$ and a "remedy" $R$. A sample of $n$ coins produced during a period would be weighed together as part of the Trial of the Pyx. The weight was required to be at least $nT-nR$. At one point in the history of the mint, the remedy was determined so that 95% of coins in a calibration set would have weights greater than or equal to the mean of the set minus $R$. 
+  http://www.stat.wisc.edu/sites/default/files/TR442_0.pdf 
+  The questions below model the variability of the weights of the minted coins as independently Normally distributed. The goal is to use variance calculations and variable transformations to understand how difficult the Trial was and by how much the Master of the Mint could reduce the mean weight of the coins and still be confident of passing the Trial. As a hint, there is some suspicion that the Master of the Mint was expected to supplement the salary of the position in this way.
+  This is an example with medieval roots of the role of statistical analysis in process control and the impact of using unsuitable measures to assess whether the process is in control. (5 points each)
+
+    a. Assuming that the size of the calibration set is m and the weights of coins are independent identically distributed samples $\left(x_1, x_2,...x_m\right)$ from Normal distribution with mean $\mu$ and standard deviation $\sigma$, what is the distribution of the random variable $X_i-\bar{X}$ where $\bar{X}=\frac{1}{m}\sum_{j=1}^{m}X_{j}$? You may use the fact that the sum of independent Normal distributions is Normal, but note that $X_i$ and $\bar{X}$ are not independent.
+    
+    b. If m is sufficiently large then $\bar{X}$ can be taken to be essentially equal to $\mu$. What value of R satisfies the condition that $P\left(X_i>\mu-R\right)=.95$?
+    
+  $P\left(X_i>\mu-R\right) = .95$
+  
+  $P\left(X_i<=\mu-R\right) = 1 - 0.95 => 0.05$
+
+  $Since, z = 0.05 (x-\mu)/(\sigma*\sqrt{n}) < -qnorm(0.05, mean = \mu, sd = \sigma)$
+
+```{r}
+alpha <- qnorm(0.05)
+alpha
+```
+
+m is large.
+
+=> $\{ X \} = \mu$
+
+Let, $\alpha = (\mu-R)/(\sigma*\sqrt{n})$
+
+Substituting the above equation, $\alpha = (\mu-R)/(\sigma*\sqrt{n})$
+
+$(\mu-R)/(\sigma*\sqrt{n}) = -1.644854$
+
+$R = \mu + 1.644854 ( \sigma * \sqrt{n})$
+    
+    c. Setting $T=0.28$, $R=0.002$, $n=10,000$, and $\sigma=0.001$, what is the probability of the sample's failing the trial of the Pyx if $\mu=0.27805$? Interestingly this value of $\mu$ means that the mint retains 0.28-0.27805=0.00195 oz. of gold on each coin and the expected weight of the trial sample is 19.5 ounces light.
+```{r}
+T = 0.28
+R = 0.002
+n = 10000
+sigma = 0.001
+mu = 0.27805
+a = (sqrt(n) * (T-R-mu))/sigma
+probab = (1 - pnorm(a))
+print(probab)
+```
+    
+    d. Given a fixed value of $R$ and a random sample of $n$ coins, what value of $\mu$ in terms of $T$, $R$, and $\sigma$ is the smallest value such that the probability of the sample's passing the trial is at least 0.9999? Check your computations with $T=0.28$, $R=0.002$, $n=10,000$, and $\sigma=0.001$. Suggestion: set $a$ equal to qnorm(.0001).
+    The distribution of the weight $W$ is $Normal\left(n\mu,n\sigma^2\right)$. This requires $P\left(\frac{W-n\mu}{\sqrt{n}\sigma}>\frac{nT-n\mu-nR}{\sqrt{n}\sigma}\right)=0.9999$ or $P\left(Z>\frac{nT-n\mu-nR}{\sqrt{n}\sigma}\right)=0.9999$ where $Z$ has a standard Normal distribution. Set $a$ equal to the $0.0001$ quantile of $Z$. Then $\frac{nT-n\mu-nR}{\sqrt{n}\sigma}=a$ or $\mu=T-R-\frac{a\sigma}{\sqrt{n}}$. 
+    
+```{r}
+x = qnorm(0.001)
+T = 0.28
+R = 0.002
+n = 10000
+sigma = 0.001
+#As per the question,
+mu = T-R-((x*sigma)/sqrt(n))
+print(mu)
+```
+    
+2. (Confidence Intervals) The purpose of this exercise is to illustrate the concept of a confidence interval. Consider the problem of estimating a parameter for a sample from a distribution known to be in a parametrized family. The 95% confidence interval, for example, for the parameter of interest is an interval calculated in such a way that the interval $\left(a_X,b_X\right)$ calculated from sample $\boldsymbol{X}$ has a probability of .95 of having the true value of the parameter, $c$ say, satisfy $c\in \left(a_X,b_X\right)$. 
+  The code below generates 10,000 samples of size 15 from the Normal distribution with $\mu=5$ and $\sigma=2$. For what proportion of these samples does the 95% confidence interval for $\mu$ from the Student's t test include the the true value of $\mu$? (The Student's t-test is implemented in R as "t.test". You may use this.) How does this relate to the concept of confidence interval? (You may find that rerunning the test with different seeds helps you address this question.)(10 points)
+
+```{r cache=TRUE}
+set.seed(12345)
+mat <- matrix(rnorm(10000 * 15, 5, 2), ncol = 15)
+#Assuming the true value of mean to be 5 from the question,
+m = 5
+#Else, alternatively, m = mean(mat)
+ait = 0
+for (i in 1:10000){
+  test_ci = t.test(mat[i,], mu = m)
+  c = test_ci$conf.int
+  if((m >= c[1]) & (m <= c[2])){
+    ait = ait + 1
+  }
+}
+prop = (ait / 10000) 
+prop
+```
+
+It is evident from the above chunk of code that nearly 95% of the samples have their true mean (m) in the 95% confidence interval.
+
+-------------------------------------------------------------------------------------------
+
+3. Please repeat the analysis in question 2 with same set of samples, but with the values rounded to 1 decimal place. What change do you observe? (10 points)
+
+```{r cache=TRUE}
+set.seed(12345)
+mat <- matrix(rnorm(10000 * 15, 5, 2), ncol = 15)
+mat.1 = round(mat, 1)
+#Assuming the true value of mean to be 5 from the question,
+m = 5
+#Else, alternatively, m = mean(mat)
+ait1 = 0
+for (i in 1:10000){
+  test1_ci = t.test(mat.1[i,], mu = m)
+  c1 = test1_ci$conf.int
+  if((m >= c1[1]) & (m <= c1[2])){
+    ait1 = ait1 + 1
+  }
+}
+prop1 = (ait1 / 10000)
+prop1
+```
+Here, having the values rounded to 1 decimal place resulted in just 1 more sample from 10,000 samples that had its true mean in its 95% confidence interval in addition to the number of samples from the previous question. 
+Not much of a change in proportion was seen here with a very minor difference of just 0.0001.
+
+-------------------------------------------------------------------------------------------
+
+
+4. (Galton data) Francis Galton, a contemporary and a relative of Charles Darwin, made some groundbreaking analyses of characteristics of human populations. He also held some racist views and espoused eugenics, inventing the word. His biography is interesting reading, but not required for this problem. The "Galton" data set in the "HistData" package has his measurements. Details are available in the help for "Galton". (5 points each)
+    ```{r}
+library(ggpubr)
+data("Galton")
+ggplot(data=Galton,aes(x=parent,y=child))+geom_jitter(height=.3,width=.3,alpha=.3)+
+   geom_abline(slope=1,intercept=0)
+```
+
+
+    a. Consider the data frame "dat" below. Perform a visual check of whether the value of "child"" minus the value of "parent" could be considered Normally distributed, allowing for the rounding of heights. The function "ggqqplot" in the "ggpubr" package may help.
+    ```{r}
+set.seed(234567)
+fic <- sample(1 : nrow(Galton), 20)
+dat <- Galton[fic,]
+distt = round(dat$child - dat$parent)
+ggqqplot(distt)
+```
+
+Almost all the points except very few stick to the reference line or diagonal.
+
+Hence we presume that the difference between the parent and child values are normally distributed.
+
+-------------------------------------------------------------------------------------------
+
+    
+    b. Is Student's t-test suitable for these data and the null hypothesis that the mean of the difference between the child's height and the parents' combined height is 0? Please discuss.
+    ```{r}
+t.test(distt)
+```
+Yes. t-test is a test which is used to determine how different two means are from each other via comparison. Student's t-test can be applicable as this is a smaller dataset with less values and the values are distributed normally.
+
+Null hypothesis: Mean difference between the child's height and the parent's height is zero.
+
+Alternate hypothesis: Mean difference between the child's height and the parent's height is not zero.
+
+-------------------------------------------------------------------------------------------
+
+    c. Test the hypothesis that this sample of child-parent is drawn from a Normal distribution with mean equal to 0 using Student's t. Please provide your interpretation of the results.
+
+```{r}
+t.test(distt, conf.level = 0.05)
+```
+Null hypothesis: The sample has mean = 0.
+
+Here, the p value is greater than the significance level, i.e. 0.05. 
+
+This contradicts the null hypothesis statement by proving it false.
+
+Hence, it is rejected.

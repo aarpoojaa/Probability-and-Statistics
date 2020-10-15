@@ -1,0 +1,232 @@
+---
+title: "Assignment_2"
+author: "Pooja Radhakrishnan"
+date: "27 January 2019"
+output:
+  word_document: default
+  pdf_document: default
+  html_document: default
+---
+
+These questions were rendered in R markdown through RStudio (<https://www.rstudio.com/wp-content/uploads/2015/02/rmarkdown-cheatsheet.pdf>, <http://rmarkdown.rstudio.com> ).
+
+Please complete the following tasks regarding the data in R. Please generate a solution document in R markdown and upload the .Rmd document and a rendered  .doc, .docx, or .pdf document.  Your work should be based  on the data's being in the same folder as the .Rmd file. Please turn in your work on Canvas. Your solution document should have your answers to the questions and should display the requested plots.
+
+
+```{r}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(ggplot2)
+library(knitr)
+```
+
+1. Please draw a random sample of 100,000 values from the Poisson distribution with $\lambda=3$ using the random seed 7654321. Present a histogram of the results with a density scale using the techniques in distributions.Rmd. You may find a bin width of 1 helpful. (5 points) 
+
+```{r}
+set.seed(7654321)
+r<-rpois(100000,lambda=3)
+dat_fram<-data.frame(value=r)
+g<- ggplot(dat_fram, aes(x=value)) +
+        geom_histogram(aes(y = ..density..),binwidth=1) 
+g
+
+```
+
+2. Discuss the appearance of the histogram in relation to the probability density function of the Poisson distribution with $\lambda=3$. A plot overlaying the theoretical values on the histogram is a recommended tool for this discussion. (5 points)
+
+```{r}
+
+creed<-seq(0,10,by=1)
+poisdf=data.frame(x=creed,y=dpois(creed,lambda=3,log=FALSE))
+g<-g+
+  geom_point(data=poisdf,aes(x=creed,y=y))
+g
+
+```
+
+
+3. The length of the interquartile range of data is an often used measure of its spread. By analogy, for a random variable with cumulative density function $F$, let $x_1$ satisfy $F\left(x_1\right)=0.25$. Let $x_2$ satisfy $F\left(x_2\right)=0.75$. Define $q=x_2-x_1$. Please calculate the values of $q$ for the Normal distributions with mean 0 and sd in ${1,2,3,...10}$ and plot the points consisting of the value of the sd and the corresponding $q$.(5 points)
+
+```{r}
+q=seq(1,10,by=1)
+for(i in seq(1,10,by=1)){
+  x1<-qnorm(0.25,mean=0,sd=i)
+  x2<-qnorm(0.75,mean=0,sd=i)
+  q[i]<-x2-x1
+  print(q[i])
+}
+
+plot(x = seq(1,10,by = 1), y = q, main ="Standard Deviation vs Q-Value", xlab = "Standard Deviation", ylab = "Q-Value")
+
+```
+
+
+4. Use integration of the density function with a change of variable to calculate the function relating the value of sd and $q$. (10 points)
+
+
+
+```{r}
+
+#Standard Deviation:
+
+q1 = seq(1,10,by = 1)
+q2 = seq(1,10,by = 1)
+quart1 <- qnorm(0.25, mean=0, q1)
+quart2 <- qnorm(0.75, mean=0, q1)
+inter_quartile_SD <- quart2 - quart1
+
+#Variance:
+
+quart1v <- qnorm(0.25, mean=0, q2*q2)
+quart2v <- qnorm(0.75, mean=0, q2*q2)
+inter_quartile_Var <- quart2v - quart1v
+
+
+print("Q value for Standard Deviation input: ")
+print(inter_quartile_SD)
+print("Q value for Variance input: ")
+print(inter_quartile_Var)
+```
+
+For Variance > 1,
+  q2[i] = 1.348980 * Variance_value[i]
+
+Consider Variance = 4,
+  > 5.395918 = 1.348980 * 4
+  
+but Variance = SD^2
+  > 5.395918 = 1.348980 * ((2)^2)
+  > (2.697959)^2 / 1.348980 = 1.348980 * ((2)^2)
+  > (2.697959)^2 = (1.348980)^2 * (2)^2
+  
+All the terms are squared. So, taking square root on both sides of the equation,
+  > 2.697959 = 1.348980 * 2
+  > q1[2] = 1.348980 * 2
+  > q = 1.348980 * SD
+
+
+The equation below represents the relation between Standard Deviation and the Q value:
+
+q = 1.34898 * SD          (or)         SD = q / 1.34898
+
+-------------------------------------------------------------------------------------------
+
+5. Consider the random variable that is the mean of 2 independent draws from the Poisson distribution with $\lambda=3$. Construct a vector of 100,000 samples from this random variable.
+Present a histogram of the results with a density scale using the techniques in distributions.Rmd. You may find a bin width of 0.5 helpful. (5 points)
+
+```{r}
+pro = rpois(200000, lambda = 3)
+pro_vect = vector(mode = "integer", length = 100000)
+j = 1
+for (i in seq(from = 1, to = 200000, by = 2)){
+  a = c(pro[i], pro[i+1])
+  a = mean(a)
+  pro_vect[j] = a
+  j = j + 1
+}
+s = data.frame(value = pro_vect)
+hist_plot = ggplot(s, aes(x = value)) + geom_histogram(aes( y = ..density..), binwidth = 0.5)
+hist_plot
+```
+
+
+
+
+6. Find the mean and interquartile range of your vector from question 5. Plot the histogram from question 5 with the density curve of the Normal distribution with that mean and $q$ equal to the interquartile range of the data. (10 points)
+
+
+
+```{r}
+mean_val = mean(pro_vect)
+t = sort(pro_vect)
+quartt <- IQR(pro_vect)
+
+print("The mean value is: ")
+print(mean_val)
+print("The Interquartile range: ")
+print(quartt)
+ad<-seq(0,8,by=0.5)
+d = data.frame(x=ad ,y = dnorm(ad, mean = mean_val, sd = quartt))
+
+hist_nd = hist_plot +
+    stat_function(fun = dnorm, colour = "red",args = list(mean=mean_val,sd = quartt))+
+    geom_point(data=d,aes(x=x,y=y))
+hist_nd
+```
+
+7. Repeat questions 5 and 6 for means of 5 draws amd means of 20 draws. Please comment on the relation of the Normal distribution to the density histogram for means of 2, 5, and 20 draws.(10 points)
+
+```{r}
+#rPoissonDist for the mean of 5 draws:
+
+ab = rpois(500000, lambda = 3)
+abc = vector(mode = "integer", length = 100000)
+j = 1
+for (i in seq(from = 1, to = 500000, by = 5)){
+  a = c(ab[i], ab[i+1], ab[i+2], ab[i+3], ab[i+4])
+  a = mean(a)
+  abc[j] = a
+  j = j + 1
+}
+s = data.frame(value = abc)
+graph_1 = ggplot(s, aes(x = value)) + geom_histogram(aes( y = ..density..), binwidth = 0.2)
+
+
+#rPoissonDist for the mean of 20 draws:
+
+abcd = rpois(2000000, lambda = 3)
+abcde = vector(mode = "integer", length = 100000)
+j = 1
+for (i in seq(from = 1, to = 2000000, by = 20)){
+  a = 0
+  for (k in seq(from = i, to = i + 19, by = 1)){
+    
+    a = a + abcd[k] 
+  }
+  a = sum(a)/20
+  abcde[j] = a
+  j = j + 1
+}
+s = data.frame(value = abcde)
+graph_2 = ggplot(s, aes(x = value)) + geom_histogram(aes( y = ..density..), binwidth = 0.05)
+
+
+#Mean and Interquartile for mean of 5 draws:
+
+mean_1 = mean(abc)
+abc = sort(abc)
+quar1 = IQR(abc)
+fae <- seq(0,6, by = 0.2)
+d = data.frame(x = fae, y = dnorm(fae, mean = mean_1, sd = quar1))
+graph_3 = graph_1+
+      stat_function(fun = dnorm, colour = "red",args = list(mean = mean_1, sd = quar1))+
+      geom_point(data = d,aes(x = x,y = y))
+graph_3
+
+
+#Mean and Interquartile for mean of 20 draws:
+
+mean_2 = mean(abcde)
+abcde = sort(abcde)
+quan2 = IQR(abcde)
+faes <- seq(0,6, by = 0.05)
+d = data.frame(x = faes, y = dnorm(faes, mean = mean_2, sd = quan2))
+graph_4 = graph_2+
+    stat_function(fun = dnorm, colour = "red",args = list(mean = mean_2, sd = quan2))+
+    geom_point(data = d,aes(x = x,y = y))
+graph_4
+
+
+print("Mean for 5 draws:")
+print(mean_1)
+
+print("InterQuartile Range for 5 draws:")
+print(quar1)
+
+print("Mean for 20 draws):")
+print(mean_2)
+
+print("InterQuartile Range for 20 draws):")
+print(quan2)
+```
+

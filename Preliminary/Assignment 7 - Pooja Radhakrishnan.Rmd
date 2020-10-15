@@ -1,0 +1,87 @@
+---
+title: "Assignment 7"
+author: "Pooja Radhakrishnan"
+date: "13 March 2019"
+output:
+  word_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+Please complete the following tasks, in R where applicable. Please generate a solution document in R markdown and upload the rendered .doc, .docx, or .pdf document.  You may add hand computations to a .doc or .docx if you prefer. In the rendered document, please show your code. That is, don't use "echo=FALSE".  
+
+In either case, your work should be based  on the data's being in the same folder as the R files. Please turn in your work on Canvas. Your solution document should have your answers to the questions and should display the requested plots.
+
+ 1.a Let $X$ and $Y$ be independent random variables with $\chi^2$ distributions with $n$ and $m$ degrees of freedom respectively. What is the distribution of $X+Y$?. (10 points)
+ 
+ $X$+$Y$ has a $\chi^2$ distribution with $n+m$ degrees of freedom.
+
+1.b. Let $X$ and $Y$ be independent random variables with $\chi^2$ distributions with $n$ and $m$ degrees of freedom respectively. What is the distribution of $X/Y$?.(10 points)
+
+The random variable $W$ defined by $\frac{\frac{X}{n}}{\frac{Y}{m}}$ has an F-distribution with numerator degrees of freedom equal to $n$ and numerator degrees of freedom equal to $m$, so
+$\frac{X}{Y}=\frac{m}{n}W$ is a constant multiple of an F-distribution with numerator degrees of freedom equal to $n$ and numerator degrees of freedom equal to $m$
+
+
+ 2. The data in "school_goals.csv" come from http://lib.stat.cmu.edu/DASL/Stories/Students'Goals.html . Students in grades 4-6 in selected schools in Michigan were asked the following question: What would you most like to do at school? a)  make good grades, b) be good at sports, c) be popular. The results are recorded in "Goals". Demographic information about the students was also collected. 
+
+  * 2.a. Please display a table of totals for each Goal for each gender (Gender), and a table of proportions for each Goal for gender. The "spread" function may be helpful in generating a two-way table with rows for gender and columns for priorities. (10 points)
+  
+```{r}
+library(tidyverse)
+dat<-read.csv("school_goals.csv")
+dat.tab<-mutate(group_by(dat,Gender),gender.ct=n())
+(dat.tab<-summarize(group_by(dat.tab,Gender,Goals),goal.ct=n(),goal.prop=n()/gender.ct[1]))
+(two_way_tidy<-dat.tab%>%select(Gender:goal.ct)%>%spread(key=Goals,value=goal.ct))
+(two_way_tidy_prop<-dat.tab%>%select(Gender,Goals,goal.prop)%>%spread(key=Goals,
+                                                                           value=goal.prop))
+
+# Old school
+(two_way<-table(dat$Gender,dat$Goals))
+two_way/rowSums(two_way)
+
+
+
+```
+ 
+  
+  * 2.b. Please do a $\chi^2$  test and a Fisher's Exact Test to determine if the goals are independent of Gender, and compare the results (10 points)
+  
+```{r}
+table(dat$Gender,dat$Goals)/rowSums(table(dat$Gender,dat$Goals))
+fisher.test(dat$Goals,dat$Gender)
+chisq.test(dat$Goals,dat$Gender)
+```
+
+Both tests perform correctly, and give strong reason to reject the null hypothesis that Goal is independent of Gender.
+
+  3.a. Returning to the preciptation data, use maximum likelihood regression to model total precipitation (total) as a linear function of year. Show the resulting coefficients and their p-values.
+
+```{r}
+dat<-read.csv("dat_ok.csv")
+m<-lm(total~year,data=dat)
+summary(m)
+
+```
+
+  3.b.  Is a linear model for the relationship between time and total appropriate? Provide any diagnostic plots you feel are relevant to addressing this question.
+  
+```{r}
+ggplot(dat,aes(x=year,y=total))+geom_point()+
+  geom_abline(slope=m$coefficients[2], intercept=m$coefficients[1])
+plot(m, which=1)
+```
+  The scatterplot shows an upward trend, with no indication of non-linearity. The plot of residuals vs. fitted is consistent with linearity.
+  
+  3.c. Is the assumption of independent,identically distributed Normal errors justifiable? Please show any relevant plots.
+  
+```{r}
+plot(m, which=2)
+library(ggpubr)
+ggqqplot(rstandard(m))
+qplot(rstandard(m))
+```
+  The plot of residuals vs. fitted is an even band around the horizontal line at 0, so the variance of the error is approximately constant over time. Independence is also reasonable. Normality isn't perfect, but is acceptable.

@@ -1,0 +1,124 @@
+---
+title: "Problem Set 1"
+author: "Pooja Radhakrishnan"
+date: "January 16, 2019"
+output:
+  word_document: default
+  html_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(ggplot2)
+library(knitr)
+```
+
+## Part 1
+
+### Question 1
+
+Using the data from the polio trials and the simulation methods from inference_example_polio.Rmd, please calculate and display the proportion of all polio cases to the study population for the "Vaccinated" and "Placebo" groups in the "RandomizedControl" experiment.
+
+```{r}
+library(HistData)
+dat<-PolioTrials
+vacine.p<-(dat$Paralytic[1]+dat$NonParalytic[1])/dat$Population[1]
+placebo.p<-(dat$Paralytic[2]+dat$NonParalytic[2])/dat$Population[2]
+```
+
+### Question 2
+
+Using the probability model that the total number of all polio cases in the "Vaccinated" and "Placebo" group together is fixed and these were randomly assigned to the "Vaccinated" and "Placebo" groups according to the proportions of the study population in each group, please estimate the probability of obtaining a count of all polio cases for the "Vaccinated" group in the "RandomizedControl" experiment that is less than or equal to the observed number.
+
+Please use the simulation methods from inference_example_polio.Rmd. 
+
+Please discuss whether the observed results are likely under this model, and relate this to the question of whether the vaccination was effective in reducing the total number of polio cases in a group.
+
+```{r}
+population = rep(0, sum(dat$Population[1:2]))
+ct = sum(dat$Paralytic[1:2])
+ct1 = sum(dat$NonParalytic[1:2])
+ct = ct + ct1
+population[1:ct] = 1
+
+tot.vac = dat$Population[1]
+tot.placebo = dat$Population[2]
+n = 1000
+sim = numeric(1000)
+set.seed(123)
+for( i in 1:n){
+  sim[i] = sum(sample(population, tot.vac))
+}
+qplot(sim)
+mean(sim <= sum(dat$Paralytic[1],dat$NonParalytic[1]))
+
+cat("The count of all polio cases less than the specified value for Vaccinated group in RandomizedControl is 0. So the observed values are highly extreme case.")
+
+vr=sum(dat$Paralytic[1],dat$NonParalytic[1])/dat$Population[1]
+pr=sum(dat$Paralytic[2],dat$NonParalytic[2])/dat$Population[2]
+if(vr<pr){
+  print("The vaccination is effective!")
+}else{
+  print("The vaccination is not effective!")
+}
+
+
+```
+
+### Question 3
+
+Consider the probability model that the number of all polio cases in the "Vaccinated" group of the "ObservedControl" experiment is a draw from the binomial distribution with the number of trials equal to the number of children in the "Vaccinated" group and the probability of "success" is equal to the proportion of polio cases in the "Vaccinated" and "Grade2NotInoculated" groups combined. Without simuation, calculate the probability of a draw that is less than or equal to the observed value for "vaccinated"" group.
+
+```{r}
+set.seed(123)
+sp<-sum(dat$Paralytic[5],dat$NonParalytic[5],dat$Paralytic[7],dat$NonParalytic[7])/sum(dat$Population[5],dat$Population[7])
+
+x<-pbinom(sum(dat$Paralytic[5],dat$NonParalytic[5]),dat$Population[5],sp)
+
+print(x)
+```
+
+
+### Question 4
+
+Specify a null hypothesis with its probability model to address the question of whether the counts of total polio cases in the "Vaccinated" groups in both experiment are consistent with equal risk of polio in each group. Explain how to conduct and interpret the analysis based on the null hypothesis.
+
+### Answer:
+
+No = the count of total polio cases in the "Vaccinated" groups in both experiments are consistent with equal risk of polio in each group.
+
+Na = the count of total polio cases in the "Vaccinated" groups in both experiments are not consistent with equal risk of polio in each group.
+
+Method of conduction:
+
+Count total polio cases in "vaccinated" groups of both experiments. Find the propotion of polio contracted from the "vaccinated" population of both experiments. 
+
+Find propotion of contracted polio cases from "vaccinated" group of each experiments.
+
+Compare the three values that we found and if the values are very close accept null hypothesis else reject null hypothesis.
+
+
+### Question 5
+
+Please implement the test you described in Question 4 and interpret the results.
+
+```{r}
+
+tot_r = sum(dat$Paralytic[5],dat$NonParalytic[5],dat$Paralytic[1],dat$NonParalytic[1])/sum(dat$Population[5],dat$Population[1])
+
+ob_r = sum(dat$Paralytic[5],dat$NonParalytic[5])/dat$Population[5]
+
+rand_r = sum(dat$Paralytic[1],dat$NonParalytic[1])/dat$Population[1]
+
+if((tot_r-ob_r <=0.001)&&(tot_r-rand_r <=0.001)&&(rand_r-ob_r <=0.001)){
+  cat("Null hypothesis is true : the counts of total polio cases in the Vaccinated groups in both experiment are consistent with equal risk of polio in each group.")
+}else{
+  cat("Alternate hypothesis is true : the counts of total polio cases in the Vaccinated groups in both experiment are not consistent with equal risk of polio in each group.")
+}
+
+```
+
+
+
