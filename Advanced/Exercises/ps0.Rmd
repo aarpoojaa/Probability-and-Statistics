@@ -1,0 +1,167 @@
+---
+title: "Problem Set 0"
+author: "Brendt Gerics"
+date: '`r format(Sys.Date(), "%B %d, %Y")`'
+output:
+  pdf_document: default
+  word_document: default
+  html_document:
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(ggpubr)
+```
+
+## Introduction
+
+Please complete the following tasks regarding the data in R. Please generate a solution document in R markdown and upload the .Rmd document and a rendered  .doc, .docx, or .pdf document. Please turn in your work on Canvas. Your solution document should have your answers to the questions and should display the requested plots. Also, please upload the .RData file you generate. Each question is worth 10 points. 
+
+All questions are worth 5 points. 
+
+## Question 1: Binary Explanatory Variable
+
+In the following exercise, you will study the case of a linear model $\mathbf{Y}=m\mathbf{X}+b+\mathbf{\varepsilon}$ in which $\mathbf{X}$ is binary, taking on values in $\left\{ 0,1\right\}$.
+
+The following notation may be useful. Given paired data $\left(x_{1},y_{1}\right),\left(x_{2},y_{2}\right),...\left(x_{n},y_{n}\right)$ for which each $x_i$ is either $0$ or $1$, set
+
+$k$ equal to the number of $1$'s among the $x$'s:$\sum_{i=1}^{n}x_{i}$ 
+
+$\bar{y}$ equal to the mean of the $y$'s: $\frac{1}{n}\sum_{i=1}^{n}y_{i}$
+ 
+$\bar{x}$ equal to the mean of the $x$'s: $\frac{1}{n}\sum_{i=1}^{n}x_{i}=\frac{k}{n}$
+
+$\bar{y}_0$ equal to the mean of the $y_i$'s for which $x_i=0$: $\frac{1}{n-k}\sum_{i:x_{i}=0}y_{i}=\frac{1}{n-k}\sum_{i=1}^{n}\left(1-x_i\right)y_{i}$
+
+$\bar{y}_1$ equal to the mean of the $y_i$'s for which $x_i=1$: $\frac{1}{k}\sum_{i:x_{i}=1}y_{i}=\frac{1}{k}\sum_{i=1}^{n}x_iy_{i}$
+
+### 1.a
+
+To have an idea of where the theoretical computations are going, simulate data as follows:
+
+```{r}
+set.seed(56789)
+x<-sample(0:1,40,replace=TRUE)
+y<-3*x+rnorm(40,0,.5)
+
+```
+
+For these data, please fit the maximum likelihood linear model for $\mathbf{y}=m\mathbf{x}+b+\mathbf{\varepsilon}$ and output the summary. Also, please calculate and output $\bar{y}_0$ and $\bar{y}_1$.
+
+```{r}
+
+```
+
+
+### 1.b
+
+Given the expression $\hat{m}=\frac{\sum_{i=1}^{n}x_{i}y_{i}-n\bar{x\cdot}\bar{y}}{\sum_{i=1}^{n}x_{i}^{2}-n\bar{x}^{2}}$, evaluate the denominator in terms of $k$ and $n$.
+
+### 1.c
+
+Evaluate the numerator of $\hat{m}$, $\sum_{i=1}^{n}x_{i}y_{i}-n\bar{x\cdot}\bar{y}$ in terms of $k$, $n$, $\bar{y}_0$, and $\bar{y}_1$. You may find that writing out the summations in terms of $\sum_{i:x_{i}=0}y_{i}$ and $\sum_{i:x_{i}=1}y_{i}$ is helpful.
+
+
+### 1.d
+
+Provide a simplified formula for $\hat{m}$ in terms of $\bar{y}_0$ and $\bar{y}_1$.
+
+$\hat{m}=\frac{\left(k-nk^2\right)\left(\bar{y}_1-\bar{y}_0\right)}{k-nk^2}=\bar{y}_1-\bar{y}_0$
+
+### 1.e
+
+Using the formula $\hat{b}=\bar{y}-\hat{m}\bar{x}$, give a simplified expression for $\hat{b}$ in terms of $\bar{y}_0$ and $\bar{y}_1$. (You may use a simple formula for $\hat{m}$ guessed from 1.a if you aren't confident about your solution in 1.d.)
+
+
+
+### self-check (no points, no response required)
+
+In this context, what is the predicted value for a $y_i$ for which $x_i=0$? What is the predicted value for a $y_i$ for which $x_i=1$? Please put your answers in terms of $k$, $n$, $\bar{x}$, $\bar{y}$, $\bar{y}_0$, and $\bar{y}_1$. You should find that your answers 1.e are totally reasonable.
+
+
+## Question 2: Sum of Independent Normal Distributions
+
+We have been using the fact that the sum independent of Normally distributed random variables is a Normally distributed random variable. Here you will investigate this numerically.
+
+### 2.a
+
+The following simulates 10,000 samples from the random variable that is the sum of $X\sim Normal\left(1,9\right)$ and $Y\sim Normal\left(5,16\right)$ where $X$ and $Y$ are independent. Determine the distribution of $W=X+Y$ based on theory and verify computationally that the samples are consistent with the theory.
+
+```{r}
+set.seed(34567)
+x<-rnorm(10000,1,3)
+y<-rnorm(10000,5,4)
+w<-x+y
+```
+
+
+### 2.b
+
+Let $X\sim Normal\left(0,1\right)$ be a standard Normal random variable. Let $f:\mathbb{R\rightarrow\mathbb{R}}$ be defined by $f\left(x\right)=x$ if $x\in [-1,1]$ and $f\left(x\right)=-x$ otherwise. Define a random variable $Y=f\left(X\right)$. Careful consideration of the cumulative distribution of $Y$ shows $Y\sim Normal\left(0,1\right)$. The random variables $X$ and $Y$ are jointly distributed with the common probability space given by $X$.Please calculate the probability of the event $A=\left\{ (x,y)|x>1\wedge y>1\right\}$ where $x$ is an outcome of $X$ and $y$ is an outcome of $Y$. Are $X$ and $Y$ independent?  A scatterplot of 1000 samples from $X$ and $Y$ as generated below as a guide to intuition
+
+```{r}
+set.seed(56799)
+x<-rnorm(1000)
+y<-x
+y[y>=1|y<=-1]=-y[y>=1|y<=-1]
+qplot(x,y)
+```
+
+### 2.c
+
+With the definition of $X$ and $Y$ above, please compute the probability that $X+Y>2$. Is $X+Y$ Normally distributed? A histogram of the samples from $X+Y$ is shown below as a guide to intuition.
+
+```{r}
+
+qplot(x+y,xlim=c(-3,3),binwidth=0.1)
+```
+
+## Question 3: Models of 2018 Constant Dollars
+
+The file "inflation.txt" has inflation rates in percent for the years 1914-2018. The following creates "dat.trim", a data frame with this information restricted to the years 1980-2018. The code also calculates the equivalent buying power in 2018 of a dollar from each year, starting in 1980, and stores this in dat.trim$const18. For numeric stability in the calculations below, 1980 is subtracted off each value of "YEAR".
+
+```{r}
+dat<-read.table("inflation.txt",header=TRUE)
+dat.trim<-filter(dat,YEAR>=1980)
+factor=1+dat.trim$AVE/100
+n<-nrow(dat.trim)
+logfactor<-log(factor)
+logfactor<-logfactor[n:1]
+logfactor[1]<-0
+logfactor<-cumsum(logfactor)
+logfactor<-logfactor[n:1]
+dat.trim$const18<-exp(logfactor)
+dat.trim$YEAR<-dat.trim$YEAR-min(dat.trim$YEAR)
+```
+
+### 3.a
+
+Please fit a maximimum likelihood linear model of "const18" on YEAR. Plot the fitted line on a scatterplot of the data. According to the diagnostic plots, are the hypotheses of a linear model with iid Normal errors satisfied?
+
+```{r}
+
+```
+
+### 3.b
+
+Please fit a maximimum likelihood linear model of "log(const18)" on "YEAR" and print the summary. Plot the fitted line on a scatterplot of the "YEAR" and "log(const18)". According to the diagnostic plots, are the hypotheses of a linear model with iid Normal errors satisfied?
+
+```{r}
+
+```
+
+For your entertainment and edification, a least squares best fit model of the form const18=c(exp(d*YEAR)) is shown.
+
+```{r}
+m.nls<-nls(const18~c*exp(d*YEAR),data=dat.trim,start=list(c=2.7,d=-0.03))
+summary(m.nls)
+
+ggplot(data=dat.trim,aes(x=YEAR))+geom_point(aes(y=const18))+
+  geom_line(aes(y=predict(m.nls)),color="green")+
+  geom_smooth(aes(y=const18),method="lm",se=FALSE)
+
+
+```
+

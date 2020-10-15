@@ -1,0 +1,154 @@
+---
+title: "Project 1"
+author: "Comp 4442"
+output:
+  pdf_document: default
+  html_document:
+    df_print: paged
+---
+## Guidelines
+\begin{enumerate}
+\item For this project, you may use any reasonable resources as long as you give a citation. You know what honest work is - let this be your guide.
+\item You may work with 1 other person if you like, but you must turn your work separately.
+\item Your answers should be as complete as you are able to make them.  Try to frame your work in a way that you could give a short presentation of your efforts.
+\item You may always ask me for assistance.
+\item This is due 05/??/2019
+\end{enumerate}
+
+
+## Overview of Topics
+
+\begin{enumerate}
+\item ANOVA - Used when we want to compare the means of some property of different groups.  
+\item Linear regression - continuous 
+\item Logistic regression - Trying to predict a binary outcome with continuous data.
+\item Lasso vs Ridge - two methods that let us choose coefficients in a more dynamic way
+\item Cross-validation - A method for breaking up data into pieces, and using this to evaluate a particular model choice.
+\end{enumerate}
+
+
+### An exercise in ANOVA
+
+The simulated data in the file "dat1.RData" represent the bids for copies of the same product auctioned on five different platforms. The dollar value of the bids are in the variable "bid". An identifier for the platform is in the variable "platform". You may assume that the bids in the data are independent samples from the population of bids for the product on the given platform. 
+
+### Q1, part 1
+
+Please perform visual diagnostics appropriate to preparation for an ANOVA to investigate whether the bids are consistent with the null hypothesis that the bid amounts on each platform are drawn from populations with equal means. You may optionally include relevant statistical tests. 
+
+```{r}
+load(file="dat1.RData")
+
+#head(dat1,20)
+
+```
+
+
+### Q1, part 2
+
+Please perform an ANOVA to investigate whether the bids are consistent with the null hypothesis that the bid amounts on each platform are drawn from populations with equal means. Output the summary of the ANOVA model. Please give your interpretation of the results in the context of your response to part 1.
+
+### Q1, part 3
+
+Please construct a column plot of the means for each platform, including error bars with the property that non-overlapping error bars indicate a difference in mean significant at the $p\leq 0.05$ level. 
+
+
+## Question 2
+
+We will look at this one together in class.  The simulated data in the file "dat2.RData" represent the results of a drug trial. Subjects with one of four comorbidities, "comorb", were recruited, then randomly assigned to one of three treatments, "treatment", and the amount of a biomarker assessed, "amt". 
+
+### Q2, part 1
+
+Both the amount of the biomarker and the log of the amount are of medical interest. Which variable (if any) from "amt" and "log(amt)" is best suited to an ANOVA to investigate whether the data are consistent with the null hypothesis that the mean level of the biomarker is equal for each treatment population, each comorbidity population, and each interaction? Please explain your conclusion. 
+
+```{r}
+load("dat2.RData")
+
+#head(dat2,20)
+
+```
+
+
+### Q2, part 2
+
+Please perform a 2-factor ANOVA with interaction using "amt" as the response variable and "treatment" and "comorb" as the grouping variables. Please provide an interpretation of the results, taking into account your response to part 1. (10 points)
+
+### Multiple linear regression
+
+We have seen multiple linear regression now where we form a model of the form:
+\[y = \alpha + \sum_{k=1}^n \beta_k x_j  \]
+We did this by minimizing the residual sum or errors, either using calculus or linear algebra.  Given a data set that we can use MLR on, we shouldn't assume that we should use all of the information involved.  The question of what information can be thrown away is a question of great importance.  
+
+**Exercise 3** Will rescaling a variable by a constant change only the coefficient of the rescaled variable or possibly others as well? Demonstrate with an example
+
+
+### Best-subset regression
+
+Suppose we want to model some quantity $y$ and we have a choice of $n$ independent variables.  Then there is an algorithm known as best-subset regression that returns, for each $k\in \{2,3,\dots,n\}$ the subset of $k$ independent that has the smallest residual sum of squares.  While this algorithm gives the 'best' choice of descriptors for a given $k$, it does not tell us which value of $k$ to use. That is, it doesn't tell us how many variables to ignore, it just tells us which ones to use for whatever choice of $k$ we pick.  
+
+### Ridge and Lasso
+
+The idea behind subset selection is throwing away entire classes of information.  This is sometimes very useful, but it is a very choppy process.  Ridge and Lasso regression try to reduce the effect of 'lesser' variables rather than totally discard them (well, lasso removes some variables)
+
+
+The coefficients, for the case of multiple linear regression, using the ridge method are found by choosing the vector $\vec{b}$ that minimizes the following:
+\[\sum_{j=1}^m(y_j-\alpha - \sum_{k=1}^n x_{jk}\beta_j)^2 +\lambda \sum_{k=1}^n \beta_k^2     \]
+Here, $\lambda$ is a parameter of our choosing.
+
+For the lasso method, the coefficients are found by minimizing: 
+\[ \sum_{j=1}^m(y_j-\alpha - \sum_{k=1}^n x_{jk}\beta_j)^2 +\lambda \sum_{k=1}^n |\beta_k|    \]
+
+
+**Exercise 4** What is significant about the case $\lambda = 0$ in the methods described above?
+
+
+Recall that the linear algebra expression for the coefficients in a linear model are given by
+\[\vec{\beta} = (A^TA)^{-1}A^T\vec{y}  \]
+
+**Exercise 5** Show that the coefficients in ridge are given by
+\[\vec{\beta} = (A^TA-\lambda I)^{-1}A^T\vec{y}  \]
+where $\lambda$ is the parameter in the ridge regression, $A$ is the matrix of observations (of independent variables), and $\vec{y}$ is the vector of observed dependent variable.  
+
+
+## Exercise 6
+
+*Super Conductors*
+
+In Canvas is file called super_train.csv.  This file contains information about the different properties of various super conductors.  
+
+\begin{enumerate}
+\item Make a multiple linear regression of this information and give a quick rundown.  Remove any variables you think unnecassary and use ANOVA to compare some of your choices.
+\item Attempt running the best-subset algorithm and report your results.  
+\item Use Lasso and Ridge on this data set, using cross-validation to pick a value for $\lambda$.  How does this model compare 
+\end{enumerate}
+
+
+
+
+## Exercise 7
+
+*Parkinson*
+
+In Canvas is file called parkinsons_updrs.csv.  This file contains information about the different properties of various super conductors.  
+
+\begin{enumerate}
+\item Make a logistic regression using this information and give a quick rundown.
+\item Use Lasso and Ridge on this data set, using cross-validation (or any method I suppose) to pick a 'good' value for $\lambda$.
+\end{enumerate}
+
+
+```{r}
+library(leaps)
+library(tidyverse)
+library(caret)
+library(glmnet)
+
+park_data = read.csv("parkinsons_updrs.csv")
+#head(park_data,4)
+
+
+
+```
+
+
+
+

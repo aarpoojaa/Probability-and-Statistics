@@ -1,0 +1,539 @@
+---
+title: "Project 1"
+author: "Pooja Radhakrishnan"
+date: "16 May 2019"
+output:
+  word_document: default
+  html_document: default
+---
+
+## Guidelines
+\begin{enumerate}
+\item For this project, you may use any reasonable resources as long as you give a citation. You know what honest work is - let this be your guide.
+\item You may work with 1 other person if you like, but you must turn your work separately.
+\item Your answers should be as complete as you are able to make them.  Try to frame your work in a way that you could give a short presentation of your efforts.
+\item You may always ask me for assistance.
+\item This is due 05/??/2019
+\end{enumerate}
+
+
+## Overview of Topics
+
+\begin{enumerate}
+\item ANOVA - Used when we want to compare the means of some property of different groups.  
+\item Linear regression - continuous 
+\item Logistic regression - Trying to predict a binary outcome with continuous data.
+\item Lasso vs Ridge - two methods that let us choose coefficients in a more dynamic way
+\item Cross-validation - A method for breaking up data into pieces, and using this to evaluate a particular model choice.
+\end{enumerate}
+
+
+### An exercise in ANOVA
+
+The simulated data in the file "dat1.RData" represent the bids for copies of the same product auctioned on five different platforms. The dollar value of the bids are in the variable "bid". An identifier for the platform is in the variable "platform". You may assume that the bids in the data are independent samples from the population of bids for the product on the given platform. 
+
+### Q1, part 1
+
+Please perform visual diagnostics appropriate to preparation for an ANOVA to investigate whether the bids are consistent with the null hypothesis that the bid amounts on each platform are drawn from populations with equal means. You may optionally include relevant statistical tests. 
+
+```{r}
+library(car)
+library(dplyr)
+
+cat('Loading the data:')
+load(file = "dat1.RData")
+
+boxplot(bid ~ platform, data = dat1, main = "dat1" , xlab = "Platform", ylab="Bid")
+
+cat('To perform ANOVA, we have to check if the response variable is a continuous variable and the predictor variables are categorical.')
+
+str(dat1)
+cat('Yes, conditions met.')
+
+#ANOVA
+dat1_aov = aov(bid ~ platform, data = dat1)
+
+cat('Let\'s check homegenity of variance')
+cat(' ')
+plot(dat1_aov,1)
+
+leveneTest(bid ~ platform, data = dat1)
+
+cat('1. From the plot, we can see that there\'s not much difference between residual and fitted data points. Hence, homogenity of variance can be assumed.
+     2. From leveneTest, it is evident that p-value > 0.05 => Homogenity of variance is assumed.')
+cat(' ')
+plot(dat1_aov, 2)
+shapiro.test(x = residuals(object = dat1_aov))
+
+cat('Results:')
+cat('1.Boxplot graph:
+    Not many outliers are present in a,c,e but b,d have outliers. Also atleast 1 platform\'s mean is different. 
+     2. Normality:
+    All the points stick nearby the reference (diagonal) line - Normality is assumed to be present.
+    Using shapiro.test(), it is found that the p-value > 0.05 => Normality of residuals is assumed to be present.')
+```
+
+
+### Q1, part 2
+
+Please perform an ANOVA to investigate whether the bids are consistent with the null hypothesis that the bid amounts on each platform are drawn from populations with equal means. Output the summary of the ANOVA model. Please give your interpretation of the results in the context of your response to part 1.
+```{r}
+
+dat1_aov_1 = aov(bid~platform, data = dat1)
+summary(dat1_aov_1)
+cat('Atleast 1 platform\'s mean is different as the field is significant. 
+    ')
+
+kruskal.test(bid ~ platform, data = dat1)
+cat('We can porove the above statement using Kruskal\'s test. p-value is way lower than 0.05 => We reject null hypothesis that the bid amounts on each platform are drawn from populations with equal means.
+    
+    ')
+
+TukeyHSD(dat1_aov_1)
+cat('This test is used to compare multiple means. This is stated by the fact that groups having p-value less than 0.05 have different means.
+     From the test above it is clear that groups (d,c), (d,b) and (d,e) have different means between the group members.')
+
+```
+### Q1, part 3
+
+Please construct a column plot of the means for each platform, including error bars with the property that non-overlapping error bars indicate a difference in mean significant at the $p\leq 0.05$ level. 
+
+```{r}
+library(ggplot2)
+dat1_colplot <- group_by(dat1, platform) %>%
+  summarise(mean_bid = mean(bid))
+
+ggplot(dat1_colplot, aes(platform, mean_bid)) + geom_col() + geom_errorbar(aes(ymin = mean_bid - (0.05 * mean_bid), ymax = mean_bid + (0.05 * mean_bid)), width = 0.5, color = "red")
+
+cat('From the plot it is clear that the groups (d,c), (d,b) and (d,e) have different means between the group members.')
+```
+## Question 2
+
+We will look at this one together in class.  The simulated data in the file "dat2.RData" represent the results of a drug trial. Subjects with one of four comorbidities, "comorb", were recruited, then randomly assigned to one of three treatments, "treatment", and the amount of a biomarker assessed, "amt". 
+
+### Q2, part 1
+
+Both the amount of the biomarker and the log of the amount are of medical interest. Which variable (if any) from "amt" and "log(amt)" is best suited to an ANOVA to investigate whether the data are consistent with the null hypothesis that the mean level of the biomarker is equal for each treatment population, each comorbidity population, and each interaction? Please explain your conclusion. 
+
+```{r}
+cat('Loading the data:
+    ')
+load("dat2.RData")
+
+#ANOVA:
+plot(aov(amt ~ comorb * treatment, data = dat2), 2)
+cat('From the plot is is seen that the field \'amt\' is normally distributed.')
+
+shapiro.test(dat2$amt)
+cat('
+Using shapiro.test(), it is evident that the p-value > 0.05.
+    ')
+
+cat('From both these observations, it is clear that we can use \'amt\' and not \'log(amt)\' as it can be used for ANOVa analysis to reject the null hypothesis that the mean level of the biomarker is equal for each treatment population.')     
+```
+
+
+### Q2, part 2
+
+Please perform a 2-factor ANOVA with interaction using "amt" as the response variable and "treatment" and "comorb" as the grouping variables. Please provide an interpretation of the results, taking into account your response to part 1. (10 points)
+
+```{r}
+#Two-factor ANOVA
+dat2_aov = aov(amt ~ comorb * treatment, data = dat2)
+summary(dat2_aov)
+
+cat('It is evident from the results that the p-value for the combination of both comorb and treatment has a much greater significance than both of them individually.
+    Hence, the mean of the groups formed by either comorb or treatment have the same mean.
+    Therefore, the mean of atleast one group formed by both comorb and treatment has different mean compared to the others.')
+```
+
+### Multiple linear regression
+
+We have seen multiple linear regression now where we form a model of the form:
+\[y = \alpha + \sum_{k=1}^n \beta_k x_j  \]
+We did this by minimizing the residual sum or errors, either using calculus or linear algebra.  Given a data set that we can use MLR on, we shouldn't assume that we should use all of the information involved.  The question of what information can be thrown away is a question of great importance.  
+
+**Exercise 3** Will rescaling a variable by a constant change only the coefficient of the rescaled variable or possibly others as well? Demonstrate with an example
+
+```{r}
+
+# Dirbike.csv dataset was available from Canvas 
+q3 <- read.csv("Dirtbike_regression_multiple_csv.csv")
+q3 <- q3[,c(4,5,12,13,20,21)]
+cat('The response variable is MSRP.')
+
+cat('the original Multiple Linear Regression without modifications:')
+q3_1 <- lm(MSRP~., data = q3)
+summary(q3_1)$coefficients[,1]
+
+cat('The Multiple Regressor with Fuel Capacity Doubled:')
+q3$Fuel.Capacity.in.gal = q3$Fuel.Capacity.in.gal * 2
+q3_2 <- lm(MSRP~.,data = q3)
+summary(q3_2)$coefficients[,1]
+
+print("Result:
+      When the fuel Capacity is Doubled, the coefficient was halved exactly without having any changes to the coefficients of the other variables, which proves that rescaling a variable by a constant changes only the coefficient of the rescaled variable and all other coefficients remain unaffected.")
+```
+
+### Best-subset regression
+
+Suppose we want to model some quantity $y$ and we have a choice of $n$ independent variables.  Then there is an algorithm known as best-subset regression that returns, for each $k\in \{2,3,\dots,n\}$ the subset of $k$ independent that has the smallest residual sum of squares.  While this algorithm gives the 'best' choice of descriptors for a given $k$, it does not tell us which value of $k$ to use. That is, it doesn't tell us how many variables to ignore, it just tells us which ones to use for whatever choice of $k$ we pick.  
+
+### Ridge and Lasso
+
+The idea behind subset selection is throwing away entire classes of information.  This is sometimes very useful, but it is a very choppy process.  Ridge and Lasso regression try to reduce the effect of 'lesser' variables rather than totally discard them (well, lasso removes some variables)
+
+
+The coefficients, for the case of multiple linear regression, using the ridge method are found by choosing the vector $\vec{b}$ that minimizes the following:
+\[\sum_{j=1}^m(y_j-\alpha - \sum_{k=1}^n x_{jk}\beta_j)^2 +\lambda \sum_{k=1}^n \beta_k^2     \]
+Here, $\lambda$ is a parameter of our choosing.
+
+For the lasso method, the coefficients are found by minimizing: 
+\[ \sum_{j=1}^m(y_j-\alpha - \sum_{k=1}^n x_{jk}\beta_j)^2 +\lambda \sum_{k=1}^n |\beta_k|    \]
+
+
+**Exercise 4** What is significant about the case $\lambda = 0$ in the methods described above?
+
+
+When we use $\lambda = 0$ in both the above methods, Linear/Multiple regression is performed including the attributes that are not significant as well(whose coefficients neither minimized nor made zero).
+
+
+Recall that the linear algebra expression for the coefficients in a linear model are given by
+\[\vec{\beta} = (A^TA)^{-1}A^T\vec{y}  \]
+
+**Exercise 5** Show that the coefficients in ridge are given by
+\[\vec{\beta} = (A^TA-\lambda I)^{-1}A^T\vec{y}  \]
+where $\lambda$ is the parameter in the ridge regression, $A$ is the matrix of observations (of independent variables), and $\vec{y}$ is the vector of observed dependent variable.  
+
+
+\[RSS(\beta;\lambda) = (y - A\beta)^T (y - A\beta) + \lambda\beta^T \beta\]
+
+Differentiating wrt $\beta$ , 
+
+\[\partial RSS(\beta; \lambda)/\partial\beta = 2(A^TA)\beta - 2A^Ty +2\lambda\beta = 0\]
+
+ \[2(A^TA)\beta+2\lambda\beta = 2A^Ty\]
+
+ \[(A^TA + \lambda I)\beta = X^Ty\]
+
+Therefore, the $\beta ^ {ridge}$  is 
+
+$\beta ^{ridge} = (A^TA + \lambda I)^{-1} A^Ty$
+
+
+## Exercise 6
+
+*Super Conductors*
+
+In Canvas is file called super_train.csv.  This file contains information about the different properties of various super conductors.  
+
+\begin{enumerate}
+\item Make a multiple linear regression of this information and give a quick rundown.  Remove any variables you think unnecassary and use ANOVA to compare some of your choices.
+\item Attempt running the best-subset algorithm and report your results.  
+\item Use Lasso and Ridge on this data set, using cross-validation to pick a value for $\lambda$.  How does this model compare 
+\end{enumerate}
+
+
+
+```{r}
+library(MASS)
+cat('Load the data:
+    ')
+dat6 <- read.csv("super_train.csv")
+
+#Regression
+dat6_lmod = lm(critical_temp ~ ., data = dat6)
+
+#ANOVA
+anova(dat6_lmod)
+
+cat('Let\'s try to achieve the task by implementing backward elimination in multiple linear regression:
+    ')
+dat6_model_back <- stepAIC(dat6_lmod, direction = 'backward',trace = FALSE)
+summary(dat6_model_back)
+dat6_model_back$anova
+
+cat('Let\'s try to achieve the task by implementing forward in multiple linear regression:
+    ')
+
+dat6_model_fwd <- stepAIC(dat6_lmod, direction = 'forward',trace = FALSE)
+summary(dat6_model_fwd)
+dat6_model_fwd$anova
+
+cat('Let\'s try to achieve the task by implementing both the elimination techniques in multiple linear regression:
+    ')
+
+dat6_model_both <- stepAIC(dat6_lmod, direction = 'both',trace = FALSE)
+summary(dat6_model_both)
+dat6_model_both$anova 
+```
+q
+```{r}
+cat('Adjusted R-Squared value:')
+summary(dat6_lmod)$adj.r.squared
+
+to_remove = list('wtd_range_Density')
+ad = dat6[, !(names(dat6) %in% to_remove)]
+dat6_lmod = lm(critical_temp ~., data = ad)
+summary(dat6_lmod)
+
+to_remove = list("wtd_mean_Density")
+ad = ad[, !(names(ad) %in% to_remove)]
+dat6_lmod = lm(critical_temp ~., data = ad)
+summary(dat6_lmod)  
+
+to_remove = list("wtd_entropy_ThermalConductivity")
+ad = ad[, !(names(ad) %in% to_remove)]
+dat6_lmod = lm(critical_temp ~., data = ad)
+summary(dat6_lmod)
+
+to_remove = list("wtd_entropy_atomic_mass")
+ad = ad[, !(names(ad) %in% to_remove)]
+dat6_lmod = lm(critical_temp ~., data = ad)
+summary(dat6_lmod) 
+
+to_remove = list("wtd_range_atomic_mass")
+ad = ad[, !(names(ad) %in% to_remove)]
+dat6_lmod = lm(critical_temp ~., data = ad)
+summary(dat6_lmod) 
+
+to_remove = list("entropy_ElectronAffinity")
+ad = ad[, !(names(ad) %in% to_remove)]
+dat6_lmod = lm(critical_temp ~., data = ad)
+summary(dat6_lmod) 
+
+to_remove = list("wtd_std_ThermalConductivity")
+ad = ad[, !(names(ad) %in% to_remove)]
+dat6_lmod = lm(critical_temp ~., data = ad)
+summary(dat6_lmod) 
+
+to_remove = list("wtd_std_fie")
+ad = ad[, !(names(ad) %in% to_remove)]
+dat6_lmod = lm(critical_temp ~., data = ad)
+summary(dat6_lmod) 
+
+to_remove = list("gmean_atomic_radius")
+ad = ad[, !(names(ad) %in% to_remove)]
+dat6_lmod = lm(critical_temp ~., data = ad)
+summary(dat6_lmod) 
+
+cat('The process continues until the value of Adjusted R-Squared increases. but for the removal of the next predictor variable, the value of Adjusted R-Squared decreases. Hence it has come to a halt.')
+
+```
+
+```{r}
+library(leaps)
+cat('To find the best subset in all the columns, we make use of the \'regsubsets()\' from the \'leaps\' library.')
+#best_subset = regsubsets(critical_temp ~ ., data = dat6, nvmax = 82, really.big = TRUE)
+#summary(best_subset)
+cat('Whoa! That took nearly 45 minutes to run! Hence I\'ve commented it out.')
+```
+
+```{r}
+library(caTools)
+library(glmnet)
+
+set.seed(98765)
+cat('Creating 75% of data as Training set and the rest as Testing Set')
+data_split = sample.split(dat6$critical_temp, SplitRatio = 0.75)
+training_set = subset(dat6, data_split == TRUE)
+test_set = subset(dat6, data_split == FALSE)
+
+#Linear Regression:
+dat6_reg = lm(critical_temp ~ ., data = training_set)
+critical_temp_pred = predict(dat6_reg, newdata = test_set[, !colnames(dat6) %in% c("critical_temp")])
+cat('Mean Squared Error of linear Regression model:
+    ')
+dat6_reg_mse = round(mean((test_set$critical_temp - critical_temp_pred) ^ 2), 2)
+dat6_reg_mse
+
+#Ridge Regression:
+cat('Goal: we have to find the best possible value of lambda for Ridge regression:')
+train_1 = model.matrix(critical_temp~., data = training_set)[, -1]
+train_2 = training_set$critical_temp
+test_1 = model.matrix(critical_temp~., data = test_set)[, -1]
+test_2 = test_set$critical_temp
+
+ridge_cv = cv.glmnet(train_1, train_2, alpha = 0) 
+
+cat('Training and predicting the model for Ridge Regressor:')
+ridge_model = glmnet(train_1, train_2, alpha = 0, lambda = ridge_cv$lambda.min) 
+ridge_2 = predict(ridge_model, newx = test_1) 
+
+cat('Mean Squared Error of Ridge Regression model:
+    ')
+ridge_model_mse = round(mean((ridge_2 - test_2) ^ 2), 2) 
+ridge_model_mse
+
+#Lasso regression:
+cat('Goal: we have to find the best possible value of lambda for Lasso regression:')
+lasso_cv = cv.glmnet(train_1, train_2, alpha = 1) 
+
+cat('Training and predicting the model for Lasso Regressor:')
+lasso_reg = glmnet(train_1, train_2, alpha = 1, lambda = lasso_cv$lambda.min) 
+lasso_y = predict(lasso_reg, newx = test_1) 
+
+cat('Mean Squared Error of Lasso Regression model:
+    ')
+lasso_reg_mse = round(mean((lasso_y - test_2) ^ 2), 2) 
+lasso_reg_mse
+```
+
+## Exercise 7
+
+*Parkinson*
+
+In Canvas is file called parkinsons_updrs.csv.  This file contains information about the different properties of various super conductors.  
+
+\begin{enumerate}
+\item Make a logistic regression using this information and give a quick rundown.
+\item Use Lasso and Ridge on this data set, using cross-validation (or any method I suppose) to pick a 'good' value for $\lambda$.
+\end{enumerate}
+
+
+```{r}
+library(caret)
+library(leaps)
+library(tidyverse)
+library(caTools)
+library(glmnet)
+
+cat('For logistic regression, let\'s consider three variables to be the dependent variables as the values range from 0-1.
+    ')
+
+set.seed(98765)
+park_data = read.csv("parkinsons_updrs.csv")
+
+data_split = sample.split(park_data$PPE, SplitRatio = 0.75)
+training_set = subset(park_data, data_split == TRUE)
+test_set = subset(park_data, data_split == FALSE)
+
+cat('PPE')
+# Logistic Regression:
+train_PPE <- training_set
+
+cat('Setting a condition to convert PPE as a binary variable')
+train_PPE$PPE <- ifelse(training_set$PPE > 0.5, 1, 0)
+
+cat('Training and predicting:')
+predictor_model_PPE = glm(PPE ~ .,family = binomial, data = train_PPE) 
+pred_PPE<- predict(predictor_model_PPE, type ='response', newdata = test_set[,!colnames(test_set) %in% c("PPE")])
+
+cat('Confusion Matrix is as follows:')
+table(ifelse(test_set$PPE > 0.5, 1, 0), ifelse(pred_PPE > 0.5, 1, 0)) 
+
+
+train_1 = model.matrix(PPE ~ ., data = training_set)[, -1]
+test_1 = model.matrix(PPE ~ ., data = test_set)[, -1]
+
+#Ridge Regressor:
+ridge_cv = cv.glmnet(train_1, train_PPE$PPE, alpha = 0, type.measure = "class", family = "binomial") 
+ridge_model = glmnet(train_1, train_PPE$PPE, alpha = 0, lambda = ridge_cv$lambda.min, family ="binomial") 
+ridge_2 = predict(ridge_model, type = "response", s = ridge_cv$lambda.min, newx = test_1)
+#CM
+cat('Ridge:
+')
+table(ifelse(test_set$PPE > 0.5, 1, 0), ifelse(ridge_2 > 0.5, 1, 0))
+
+
+#Lasso Regressor:
+lasso_cv = cv.glmnet(train_1, train_PPE$PPE, alpha = 1, type.measure="class", family = "binomial") 
+lasso_model = glmnet(train_1, train_PPE$PPE, alpha = 1, lambda = lasso_cv$lambda.min, family ="binomial") 
+lasso_y = predict(lasso_model, newx = test_1)
+#CM
+cat('Lasso:
+    ')
+table(ifelse(test_set$PPE > 0.5, 1, 0), ifelse(lasso_y > 0.5, 1, 0))
+cat('Result:
+    Logistic Regression works better than Ridge and Lasso as seen from the results. The True Positive values were better predicted by Logistic Regression and on the contrary, Ridge and Lasso Regressors predicted many false negative values. Hence, Logistic Regression wins.')
+```
+
+
+
+```{r}
+
+cat('RPDE')
+#Logistic Regression:
+train_RPDE <- training_set
+
+cat('Setting a condition to convert RPDE as a binary variable')
+train_RPDE$RPDE <- ifelse(training_set$RPDE > 0.5, 1, 0)
+
+cat('Training and predicting:')
+predictor_model_RPDE = glm(RPDE ~ .,family = binomial, data = train_RPDE)
+pred_RPDE <- predict(predictor_model_RPDE, type = 'response', newdata = test_set[,!colnames(test_set) %in% c("RPDE")])
+
+cat('Confusion Matrix is as follows:')
+table(ifelse(test_set$RPDE > 0.5, 1, 0), ifelse(pred_RPDE > 0.5, 1, 0))
+
+train_1 = model.matrix(RPDE ~ ., data = training_set)[, -19]
+test_1 = model.matrix(RPDE ~ ., data = test_set)[, -19]
+
+#Ridge Regression:
+ridge_cv = cv.glmnet(train_1, train_RPDE$RPDE, alpha = 0, type.measure ="class", family = "binomial") 
+ridge_model = glmnet(train_1, train_RPDE$RPDE, alpha = 0, lambda = ridge_cv$lambda.min, family = "binomial")
+ridge_2 = predict(ridge_model, type = "response", s = ridge_cv$lambda.min, newx = test_1)
+#CM
+cat('Ridge:
+')
+table(ifelse(test_set$RPDE > 0.5, 1, 0), ifelse(ridge_2 > 0.5, 1, 0))
+
+
+#Lasso Regression:
+lasso_cv = cv.glmnet(train_1, train_RPDE$RPDE, alpha = 1, type.measure ="class", family = "binomial") 
+lasso_model = glmnet(train_1, train_RPDE$RPDE, alpha = 1, lambda = lasso_cv$lambda.min, family ="binomial")
+lasso_y = predict(lasso_model, newx = test_1)
+#CM
+cat('Lasso:
+')
+table(ifelse(test_set$RPDE > 0.5, 1, 0), ifelse(lasso_y > 0.5, 1, 0))
+cat('Result:
+    Logistic Regression works better than Ridge and Lasso as seen from the results. The True Positive values were better predicted by Logistic Regression and on the contrary, Ridge and Lasso Regressors predicted many false negative values. Hence, Logistic Regression wins.')
+```
+
+
+```{r}
+
+cat('NHR')
+#Logistic Regression:
+
+train_NHR <- training_set
+
+cat('Setting a condition to convert NHR as a binary variable')
+train_NHR$NHR <- ifelse(training_set$NHR > 0.5, 1, 0)
+
+cat('Training and predicting:')
+predictor_model_NHR = glm(NHR ~ .,family = binomial, data = train_NHR)
+pred_NHR<- predict(predictor_model_NHR, type ='response',newdata = test_set[,!colnames(test_set) %in% c("NHR")])
+
+cat('Confusion Matrix is as follows:')
+table(ifelse(test_set$NHR>0.5,1,0),ifelse(pred_NHR>0.5,1,0))
+
+train_1 = model.matrix(NHR ~ ., data = training_set)[, -17]
+test_1 = model.matrix(NHR ~ ., data = test_set)[, -17]
+
+#Ridge Regression
+ridge_cv = cv.glmnet(train_1, train_NHR$NHR, alpha = 0, type.measure="class", family= "binomial") 
+ridge_model = glmnet(train_1, train_NHR$NHR, alpha = 0, lambda = ridge_cv$lambda.min, family = "binomial") 
+ridge_2 = predict(ridge_model, type = "response", s=ridge_cv$lambda.min, newx = test_1)
+#CM
+cat('Ridge:
+')
+table(ifelse(test_set$NHR>0.5,1,0),ifelse(ridge_2 > 0.5, 1, 0))
+
+
+#Lasso Regression
+lasso_cv = cv.glmnet(train_1, train_NHR$NHR, alpha = 1, type.measure ="class", family = "binomial") 
+lasso_model = glmnet(train_1, train_NHR$NHR, alpha = 1, lambda = lasso_cv$lambda.min, family = "binomial") 
+lasso_y = predict(lasso_model, newx = test_1)
+#CM
+cat('Lasso:
+')
+table(ifelse(test_set$NHR > 0.5, 1, 0), ifelse(lasso_y > 0.5, 1, 0))
+
+cat('Result:
+    Logistic Regression works better than Ridge and Lasso as seen from the results. The True Positive values were better predicted by Logistic Regression and on the contrary, Ridge and Lasso Regressors predicted many false negative values. Hence, Logistic Regression wins.')
+```
+
+From the results above, Logistic Regression gains the upper hand as justified!
+

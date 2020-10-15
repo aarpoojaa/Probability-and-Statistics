@@ -1,0 +1,509 @@
+---
+title: "Bayesian Analysis - Project 2"
+author: "Pooja Radhakrishnan"
+date: "6/5/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+##BAYESIAN REGRESSION ANALYSIS
+In this project, I am implementing the task of Movie Rating prediction using Bayesian Regression Analysis model. The dataset I am using was obtained from www.kaggle.com which contains the clubbed reviews of users and critics along with movie information attributes from both imdb.com and rottentomatoes.com. The input file is of the format .Rdata and so I load it using the miceadds feature of R. Also to have a overall look over the data, I use the summary feature to check the stats of the features of the dataset.
+
+```{r load-data}
+library(miceadds)
+dat <- miceadds::load.Rdata2(filename="raw_data.Rdata")
+summary(dat)
+```
+##VISUALIZATION
+
+```{r variables inclusion, fig.width = 6, fig.height = 6}
+library(ggplot2)
+library(devtools)
+library(dplyr)
+library(GGally)
+library(grid)
+library(gridExtra)
+
+g1 <- ggplot(dat, aes(x = title_type)) +
+  geom_bar(fill = "grey", alpha = 0.7)+
+  theme_bw()+
+  labs(x = "Type of movie", y = "Count")+
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0))
+ggsave("g1.png")
+
+g2 <- ggplot(dat, aes(x = genre)) +
+  geom_bar(fill = "lightgreen", alpha = 0.7)+
+  theme_bw()+
+  labs(x = "genre", y = "Count")+ 
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0))
+ggsave("g2.png")
+
+g3 <- ggplot(dat, aes(x = imdb_num_votes)) +
+  geom_histogram(binwidth = 50000, fill = "orange", alpha = 0.7)+
+  theme_bw()+
+  labs(x = "Number of votes in Imdb", y = "Count")+
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0))
+ggsave("g3.png")
+
+g4 <- ggplot(dat, aes(x = mpaa_rating)) +
+  geom_bar(fill = "lightblue", alpha = 0.7)+
+  theme_bw()+
+  labs(x = "MPAA Rating", y = "Count")+
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0))
+ggsave("g4.png")
+
+g5 <- ggplot(dat, aes(x = thtr_rel_month)) +
+  geom_bar(fill = "pink", alpha = 0.7)+
+  theme_bw()+
+  labs(x = "Month of Release", y = "Count")+ 
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0))
+ggsave("g5.png")
+
+g6 <- ggplot(dat, aes(x = best_pic_win)) +
+  geom_bar(fill = "blue", alpha = 0.7)+
+  theme_bw()+
+  labs(x = "Film won an oscar", y = "Count")+
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0))
+ggsave("g6.png")
+
+g7 <- ggplot(dat, aes(x = best_dir_win)) +
+  geom_bar(fill = "red", alpha = 0.4)+
+  theme_bw()+
+  labs(x = "Director won an oscar", y = "Count")+
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0))
+ggsave("g7.png")
+
+g8 <- ggplot(dat, aes(x = best_actor_win)) +
+  geom_bar(fill = "grey", alpha = 0.7)+
+  theme_bw()+
+  labs(x = "Actor won an oscar", y = "Count")+
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0))
+ggsave("g8.png")
+
+g9 <- ggplot(dat, aes(x = best_actress_win)) +
+  geom_bar(fill = "cyan", alpha = 0.7)+ 
+  theme_bw()+
+  labs(x = "Actress won an oscar", y = "Count")+
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0))
+ggsave("g9.png")
+
+grid.arrange(g1, g2, g3, g4, g5, nrow = 3, top = "Movie Characteristics")
+grid.arrange(g6, g7, g8, g9, nrow = 2, top = "Film or Staff involved won an Oscar")
+```
+
+##DATA MODIFICATION
+
+From the summary of the dataset above, let's try extracting the most dominant features and try to build a model. So extracting then *'Feature Film'* factor from *title_type* as there are 591 films under this factor out of 651, *'Drama'* from genre as there are 305 films under this factor, *'R'* factor from *'mpaa_rating'* as there are 329 films under this factor. As we have have oscar nominations and winners data as well, we will consider that as a factor by creating a new field *'oscar season'*. We'll also consider creating a new attribute *'summer_season'* as generally most of the movies get released during this time.
+
+```{r data modification}
+
+dat <- dat%>%
+        mutate(feature_film = factor(ifelse(title_type == 'Feature Film', 'yes', 'no')))
+
+dat <- dat%>%
+        mutate(drama = factor(ifelse(genre == 'Drama', 'yes', 'no')))
+
+dat <- dat%>%
+        mutate(mpaa_rating_R = factor(ifelse(mpaa_rating == 'R', 'yes', 'no')))
+
+dat <- dat%>%
+        mutate(oscar_season = factor(ifelse(thtr_rel_month == 10| thtr_rel_month == 11| thtr_rel_month == 12, 'yes', 'no')))
+
+dat <- dat%>%
+        mutate(summer_season = factor(ifelse(thtr_rel_month == 5| thtr_rel_month == 6| thtr_rel_month == 7| thtr_rel_month == 8, 'yes', 'no')))
+```
+
+
+## RESOPONSE AND PREDICTOR VARIABLES SELECTION
+
+Now since we have the dataset loaded and ready, let's perform Exploratory Data Analysis to check for some interesting relationships between the attributes of data and understand more about the features of the dataset.
+
+```{r imdb}
+library(corrplot)
+library(statsr)
+library(grid)
+library(gridExtra)
+library(tidyverse)
+
+ggplot(dat, aes(x = imdb_rating)) + geom_histogram(fill = "orange", alpha = 0.7) + theme_bw() +  labs(x = "IMDB rating ", y = "Count", title = "Distribution of IMDB Rating")
+
+grid.newpage()
+grid.table(dat %>%
+  summarise(mean = round(mean(imdb_rating), 3), 
+            sd = round(sd(imdb_rating), 3), 
+            median = median(imdb_rating), 
+            IQR = IQR(imdb_rating), 
+            min = min(imdb_rating), 
+            max = max(imdb_rating)))
+```
+
+```{r Audience Score}
+ggplot(dat, aes(x = audience_score)) + geom_histogram(fill = "pink", alpha = 0.7) + theme_bw() + labs(x = "Tomatometer Rating", y = "Count", title = "Distribution of Audience Score")
+
+grid.newpage()
+grid.table(dat %>%
+  summarise(mean = round(mean(audience_score), 3), 
+            sd = round(sd(audience_score), 3), 
+            median = median(audience_score), 
+            IQR = IQR(audience_score), 
+            min = min(audience_score), 
+            max = max(audience_score)))
+```
+From the plots above, we can see that the graph of Tomatometer is left skewed and the IMDB graph appears to resemble normal distribution. So here, we can assume imdb_rating to be our response variable.
+
+To double check, let's try the logarithmic version of the two variables
+
+```{r logarithmic graphs to double check}
+
+dat <- dat%>% mutate(audience_score_log = log(audience_score))
+
+dat <- dat%>%
+  mutate(imdb_log = log(imdb_rating))
+
+log_aud <- ggplot(dat, aes(x = audience_score_log)) + geom_histogram(fill = "red", alpha = 0.7) + theme_bw() + labs(x = "Logarithm of Audience Score", y = "Frequency", title = "Distribution of Logarithm of Audience Score")
+log_aud
+
+log_imdb <- ggplot(dat, aes(x = imdb_log)) + geom_histogram(fill = "blue", alpha = 0.7) + theme_bw() + labs(x = "Logarithm of IMDB Rating", y = "Frequency", title = "Distribution of Logarithm of IMDB Rating")
+log_imdb
+```
+
+From the plots above, we can see that the logarithmic graohs of both imdb_rating and tomatometer rating. The Tomatometer graph is hevaily left skewed. The IMDB graph somewhat resembles a normal distribution, so we'll take this variable into consideration.
+
+Let's try to check the correlation between the variables:
+
+```{r correlation check}
+
+ggplot(data = dat, aes(x = audience_score, y = critics_score)) + geom_point() + stat_smooth(method = "lm") + theme_bw() + labs(x = "Tomatometer", y = "Critics Score", title = "Correlation plot of Tomatometer and Critics Score")
+
+#cor(dat$audience_score, dat$critics_score)
+
+ggplot(data = dat, aes(x = imdb_rating, y = critics_score)) + geom_point() + stat_smooth(method = "lm") + theme_bw() + labs(x = "IMDB Rating", y = "Critics Score", title = "Correlation of of IMDB Rating and Critics Score")
+
+#cor(dat$imdb_rating, dat$critics_score)
+
+ggplot(data = dat, aes(x = audience_score, y = imdb_rating)) + geom_point() + stat_smooth(method = "lm") + theme_bw() + labs(x = "Tomatometer", y = "IMDB Rating", title = "Correlation of Tomatometer and IMDB Rating")
+
+#cor(dat$audience_score, dat$imdb_rating)
+
+#Overall correlation matrix:
+dat_corr <- dat %>%
+  select(audience_score, imdb_rating, critics_score)
+dat_corr_mat <- cor(dat_corr, use="complete.obs", method="pearson")
+knitr::kable(dat_corr_mat)
+
+#Visualization of Correlation matrix
+corr_plot <- corrplot(dat_corr_mat, type = "lower")
+
+```
+
+Interpretations:
+- The first scatter plot between Tomatometer rating and the critics score is a bit spread out from the line, which conveys that they're not very highly correlated.
+- The second scatter plot between IMDB_rating and critics score seems to a bit better than the previous graph which conveys that they're not very highly correlated.
+- The third scatter plot between Tomatometer rating and the imdb_rating seems to be highly correlated as the points are very close by.
+- The fourth plot - Correlation plot also proves visually that imdb_rating and Tomatometer rating are highly correlated as it's in a darker shade of blue than the other combinations.
+
+In addition to these plots, the correlation matrix also proves the same numerically.
+
+So we can infer that, when we use imdb_rating as the response variable, we shouldn't use audience_score as a predictor variable as they're very highly correlated.
+
+
+Summary of the final dataset looks like:
+
+```{r summary}
+cat('IMDB number of votes: \n\n')
+summary(dat$imdb_num_votes)
+cat('\nMPAA_rating:')
+table(dat$mpaa_rating)
+cat('\nTitle Type:')
+table(dat$title_type)
+cat('\nGenre:')
+table(dat$genre)
+cat('\nFilms won Oscar:')
+table(dat$best_pic_win)
+cat('\ndirector won Oscar:')
+table(dat$best_dir_win)
+cat('\nActor won Oscar:')
+table(dat$best_actor_win)
+cat('\nActress won Oscar:')
+table(dat$best_actress_win)
+cat('\nRuntime:')
+table(dat$runtime)
+cat('\nTheatre Release Month:')
+table(dat$thtr_rel_month)
+cat('\nTop 200 Box:')
+table(dat$top200_box)
+cat('\nOscar Season:')
+table(dat$oscar_season)
+cat('\nSummer Season:')
+table(dat$summer_season)
+cat('\nBest Pic Nomination:')
+table(dat$best_pic_nom)
+```
+
+
+##BAYESIAN MODEL
+
+Now let's start building the model with the following features as determined above:
+
+```{r bayes variables selection}
+bayes_dat <- dat%>%
+                  select(feature_film, drama, runtime, mpaa_rating_R, 
+                         thtr_rel_year, oscar_season, summer_season, imdb_rating,
+                         imdb_num_votes, critics_score, best_pic_nom, best_pic_win,
+                         best_actor_win, best_actress_win, best_dir_win, top200_box)
+```
+
+
+Let's try visually analyzing the predictor variables and the response variable separately to see if more data manipulation can be made:
+
+```{r feature_plot, fig.height= 8, fig.width=8}
+
+p1 <- ggplot(bayes_dat, aes(x=feature_film, y = imdb_rating, fill=feature_film))+
+  geom_boxplot(alpha = 0.7)+
+  theme_minimal()+
+  scale_fill_brewer(palette="Set2")+
+  labs(x = "Feature Film", y= "imdb_rating")+ 
+  theme(axis.text.x=element_text(angle=90, hjust = 1, vjust = 0))+
+  theme(legend.position="none")
+
+p2 <- ggplot(bayes_dat, aes(x=drama, y = imdb_rating, fill=drama))+
+  geom_boxplot(alpha = 0.7)+
+  theme_minimal()+
+  scale_fill_brewer(palette="Set3")+
+  labs(x = "Drama", y= "imdb_rating")+ 
+  theme(axis.text.x=element_text(angle=90, hjust = 1, vjust = 0))+
+  theme(legend.position="none")
+
+p3<- ggplot(bayes_dat, aes(x=mpaa_rating_R, y = imdb_rating, fill=mpaa_rating_R))+
+  geom_boxplot(alpha = 0.7)+
+  theme_minimal()+
+  scale_fill_brewer(palette="Set1")+  
+  labs(x = "MPAA Rating R", y= "imdb_rating")+ 
+  theme(axis.text.x=element_text(angle=90, hjust = 1, vjust = 0))+
+  theme(legend.position="none")
+
+p4 <- ggplot(bayes_dat, aes(x=oscar_season, y = imdb_rating, fill=oscar_season))+
+  geom_boxplot(alpha = 0.7)+
+  theme_minimal()+
+  scale_fill_brewer(palette="Dark2")+   
+  labs(x = "Oscar season", y= "imdb_rating")+ 
+  theme(axis.text.x=element_text(angle=90, hjust = 1, vjust = 0))+
+  theme(legend.position="none")
+
+p5 <- ggplot(bayes_dat, aes(x=summer_season, y = imdb_rating, fill=summer_season))+
+  geom_boxplot(alpha = 0.7)+
+  theme_minimal()+
+  scale_fill_brewer(palette="RdBu")+   
+  labs(x = "Summer season", y= "imdb_rating")+ 
+  theme(axis.text.x=element_text(angle=90, hjust = 1, vjust = 0))+
+  theme(legend.position="none")
+
+p6 <- ggplot(bayes_dat, aes(x=imdb_num_votes, y = imdb_rating))+
+  geom_point(colour = "blue", alpha = 0.5)+
+  theme_bw()+
+  geom_smooth()+
+  labs(x = "Number votes", y= "Imdb rating", fill = "won_oscar") 
+
+p7 <- ggplot(bayes_dat, aes(x=best_pic_win, y = imdb_rating, fill = best_pic_win))+
+  geom_boxplot(alpha = 0.7)+
+  theme_bw()+
+  labs(x = "Film_won_Oscar", y= "Imdb rating", fill = "best_pic_win")
+
+p8 <- ggplot(bayes_dat, aes(x=best_actress_win, y = imdb_rating, fill = best_actress_win))+
+  geom_boxplot(alpha = 0.7)+
+  theme_bw()+
+  labs(x = "Actress_won_Oscar", y= "Imdb rating", fill = "best_actress_win")
+
+p9 <- ggplot(bayes_dat, aes(x=best_actor_win, y = imdb_rating, fill = best_actor_win))+
+  geom_boxplot(alpha = 0.7)+
+  theme_bw()+
+  labs(x = "Actor_won_Oscar", y= "Imdb rating", fill = "best_actor_win")
+
+p10 <- ggplot(bayes_dat, aes(x=best_dir_win, y = imdb_rating, fill = best_dir_win))+
+  geom_boxplot(alpha = 0.7)+
+  theme_bw()+
+  labs(x = "Director_won_Oscar", y= "Imdb rating", fill = "best_dir_win")
+
+
+
+grid.arrange(p1, p2, p3, p4, p5, nrow = 3)
+grid.arrange(p10, p6, p7, p8, p9, nrow = 3)
+
+```
+
+```{r summary}
+library(pander)
+table_feature <- bayes_dat %>%
+                    tbl_df%>%
+                    group_by(feature_film)%>%
+                    dplyr::summarize(n = n(), Mean = mean(round(mean(imdb_rating), 2)), Sd = sd(imdb_rating))
+pandoc.table(table_feature)
+
+table_drama <- bayes_dat %>%
+                    tbl_df%>%
+                    group_by(drama)%>%
+                    dplyr::summarize(n = n(), Mean = mean(round(mean(imdb_rating), 2)), Sd = sd(imdb_rating))
+pandoc.table(table_drama)
+
+table_rating <- bayes_dat %>%
+                    tbl_df%>%
+                    group_by(mpaa_rating_R)%>%
+                    dplyr::summarize(n = n(), Mean = mean(round(mean(imdb_rating), 2)), Sd = sd(imdb_rating))
+pandoc.table(table_rating)
+
+table_oscar <- bayes_dat %>%
+                    tbl_df%>%
+                    group_by(oscar_season)%>%
+                    dplyr::summarize(n = n(), Mean = mean(round(mean(imdb_rating), 2)), Sd = sd(imdb_rating))
+pandoc.table(table_oscar)
+
+table_summer <- bayes_dat %>%
+                    tbl_df%>%
+                    group_by(summer_season)%>%
+                    dplyr::summarize(n = n(), Mean = mean(round(mean(imdb_rating), 2)), Sd = sd(imdb_rating))
+pandoc.table(table_summer)
+```
+From the table summaries and the plots above, we can infer the following:
+
+- A relationship between `feature_film` and `imdb_rating` is present in this dataset.
+- A clear proof of there exists a relationship between `drama` and `imdb_rating` doesn't exist as the mean and variance are almost similar.
+- There's no relationship between `mpaa_rating_R` and `imdb_rating` doesn't exist as the mean and variance is almost the same.
+- There's no relationship between `oscar_season` and `imdb_rating` doesn't exist as the mean and variance is almost the same.
+- There's no relationship between `summer_season` and `imdb_rating` doesn't exist as the mean and variance is almost the same.
+
+So, we can infer that `feature-film` has a stronger relationship with `imdb_rating` than the other variables.
+
+
+*Now, let's start building the bayesian model!*
+
+We're going to use the Markov chain Monte Carlo (MCMC) method, which impoves the search capability of the model. Zellner-Siow Cauchy(ZS-null) and uniform methods are used as prior to assign equal probabilities to all the models.
+
+```{r bayesian}
+library(BAS)
+bayes_dat <- bayes_dat %>%
+      filter(complete.cases(.))
+bayes_dat_lm <- bas.lm(imdb_rating ~ .,
+                     data = bayes_dat,
+                     method = "MCMC",
+                     prior = "ZS-null",
+                     modelprior = uniform())
+```
+
+```{r bayes-summary}
+bayes_dat_lm
+summary(bayes_dat_lm)
+```
+
+```{r image, fig.height=6, fig.width=6}
+image(bayes_dat_lm, rotate=F)
+```
+
+This plot is used to visually interpret the Log Posterior Odds and the Model Rank. From the plot and the summary, we can infer that:
+- `feature_film` appears in all the top 5 models with a mariginal probability of 0.99997864
+- `runtime` appears in all the top 5 models with a mariginal probability of 0.98245544
+- `critics_score` appears in all the top 5 models with a mariginal probability of 0.99995880
+- `imdb_num_votes` appears in all the top 5 models with a mariginal probability of 0.99997711
+- `drama` appears in 3 of 5 top models with a mariginal probability of 0.57723083
+
+Hence, the best model includes the five attributes above along with the intercept.
+
+Now let's try to derive the coefficients for these attributes from the model:
+
+```{r coefficients}
+coef_bayes <- coef(bayes_dat_lm)
+plot(coef_bayes, subset = c(1, 2, 3, 4, 9, 10), ask=F)
+```
+The plots above show the possible values of probability that the variable can take when the coefficient is non-zero. 
+The vertical line denotes the probability when the coefficients are 0.
+
+Now let's try plotting the residuals of the model:
+
+```{r residuals, fig.height=4}
+a1 <- plot(bayes_dat_lm, which = 1)
+a2 <- plot(bayes_dat_lm, which = 2, ask=F)
+a3 <- plot(bayes_dat_lm, which = 3, ask=F)
+a4 <- plot(bayes_dat_lm, which = 4, ask=F)
+#grid.arrange(a1,a2,a3,a4, nrow = 2)
+```
+
+From the plots above, we can interpret that:
+- The 'Residuals vs Fitted' plot shows that there aren't many outliers except 2 with the variance being constant and the spread being constant.
+- The 'Model Probabilities' curve shows a bend nearly at 300 and becomes flat after that. This plot shows the cumulative probabilities of all the models. 
+- The 'Model Complexity' graph shows the dimension of each model, which is the number of regression coefficients with the intercept vs the log of the model's marginal likelihood. The highest log marginal is be reached between 5 to 12 dimensions. 
+- The 'Inclusion Probabilities' graph shows the marginal posterior inclusion probabilities for all the variables. The red lines denote the marginal posterior inclusion probabilities that are greater than 0.5. This graph shows the final variables to be included for the model.
+
+
+Now, let's try prediction of the rating of five movies using our model:
+
+```{r prediction}
+zootropolis <- data.frame(feature_film = "yes", drama="no", 
+                          runtime=108, mpaa_rating_R = "no", 
+                          thtr_rel_year = 2016, oscar_season = "no", 
+                          summer_season = "no", 
+                          imdb_num_votes = 345433, critics_score=98, 
+                          best_pic_nom = "yes", best_pic_win = "yes",
+                          best_actor_win = "no", best_actress_win = "no",
+                          best_dir_win = "yes", top200_box = "yes")
+predict_1 <- predict(bayes_dat_lm, zootropolis, estimator="BMA", interval = "predict", se.fit=TRUE)
+data.frame('Movie' = 'Zootropolis',
+           'Estimated IMDB rating' = predict_1$Ybma, 
+           'Real IMDB rating' = 8.0)
+
+manchester <- data.frame(feature_film = "yes", drama="yes", 
+                            runtime=137, mpaa_rating_R = "yes", 
+                            thtr_rel_year = 2016, oscar_season = "yes", 
+                            summer_season = "no", 
+                            imdb_num_votes = 214449, critics_score=96, 
+                            best_pic_nom = "yes", best_pic_win = "no",
+                            best_actor_win = "yes", best_actress_win = "no",
+                            best_dir_win = "yes", top200_box = "no")
+  
+predict_2 <- predict(bayes_dat_lm, manchester, estimator="BMA", interval = "predict", se.fit=TRUE)
+data.frame('Movie' = 'Manchester',
+             'Estimated IMDB rating' = predict_2$Ybma, 
+             'Real IMDB rating' = 7.8)
+  
+lights_out <- data.frame(feature_film = "yes", drama="yes", 
+                          runtime=81, mpaa_rating_R = "no", 
+                          thtr_rel_year = 2016, oscar_season = "no", 
+                          summer_season = "no", 
+                          imdb_num_votes = 100577, critics_score=58, 
+                          best_pic_nom = "no", best_pic_win = "no",
+                          best_actor_win = "no", best_actress_win = "no",
+                          best_dir_win = "no", top200_box = "yes")
+predict_3 <- predict(bayes_dat_lm, lights_out, estimator="BMA", interval = "predict", se.fit=TRUE)
+data.frame('Movie' = 'Lights Out',
+           'Estimated IMDB rating' = predict_3$Ybma, 
+           'Real IMDB rating' = 6.3)  
+
+jungle_book <- data.frame(feature_film = "yes", drama="yes", 
+                          runtime=106, mpaa_rating_R = "no", 
+                          thtr_rel_year = 2016, oscar_season = "no", 
+                          summer_season = "no", 
+                          imdb_num_votes = 240739, critics_score=77, 
+                          best_pic_nom = "no", best_pic_win = "no",
+                          best_actor_win = "no", best_actress_win = "no",
+                          best_dir_win = "no", top200_box = "yes")
+predict_4 <- predict(bayes_dat_lm, jungle_book, estimator="BMA", interval = "predict", se.fit=TRUE)
+data.frame('Movie' = 'Jungle Book',
+           'Estimated IMDB rating' = predict_4$Ybma, 
+           'Real IMDB rating' = 7.4)
+
+doctor_strange <- data.frame(feature_film = "yes", drama="no", 
+                          runtime=115, mpaa_rating_R = "no", 
+                          thtr_rel_year = 2016, oscar_season = "yes", 
+                          summer_season = "no", 
+                          imdb_num_votes = 513998, critics_score=72, 
+                          best_pic_nom = "yes", best_pic_win = "yes",
+                          best_actor_win = "no", best_actress_win = "no",
+                          best_dir_win = "yes", top200_box = "yes")
+predict_5 <- predict(bayes_dat_lm, doctor_strange, estimator="BMA", interval = "predict", se.fit=TRUE)
+data.frame('Movie' = 'Doctor Strange',
+           'Estimated IMDB rating' = predict_5$Ybma, 
+           'Real IMDB rating' = 7.5)
+```
+
+We can see that the model's prediction is close to the actual IMDB rating. Thus, we have implemented the Bayesian regression model to successfully predict the movie rating using the IMDB dataset.

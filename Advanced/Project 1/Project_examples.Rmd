@@ -1,0 +1,71 @@
+---
+title: "Project 1 examples"
+author: "Comp 4442"
+output:
+  pdf_document: default
+  html_document:
+    df_print: paged
+---
+```{r}
+
+library(tidyverse)
+library(caret)
+library(glmnet)
+library(ISLR)
+library(dplyr)
+library(leaps)
+
+forest_data <- read.csv("forestfires.csv")
+forest_data <- na.omit(forest_data)
+
+models <- regsubsets(area ~.-day - month, data = forest_data, nvmax = 5)
+
+summary(models)
+
+model_1 <- lm(area ~ X, data = forest_data)
+model_2 <- lm(area ~ X + temp,data = forest_data)
+model_3 <- lm(area ~ X + temp + DMC,data = forest_data)
+anova(model_1,model_2)
+anova(model_2,model_3)
+
+
+
+set.seed(123) 
+train.control <- trainControl(method = "cv", number = 10)
+# Train the model
+model <- train(area ~.-day-month, data = forest_data, method = "lm", trControl = train.control)
+# Summarize the results
+print(model)
+```
+
+
+
+```{r}
+new_forest_data <- forest_data[,-which(names(forest_data) %in% c("month","day"))]
+
+x <- as.matrix(new_forest_data[,-1]) # Removes class
+y <- as.double(as.matrix(new_forest_data[, 1])) # Only class
+
+set.seed(999)
+cv.ridge <- cv.glmnet(x, y, family='gaussian', alpha=0, parallel=TRUE, standardize=TRUE)
+#plot(cv.ridge)
+cv.ridge$lambda.min
+cv.ridge$lambda.1se
+coef(cv.ridge, s=cv.ridge$lambda.min)
+
+
+
+cv.ridge <- cv.glmnet(x, y, family='gaussian', alpha=1, parallel=TRUE, standardize=TRUE)
+#plot(cv.ridge)
+cv.ridge$lambda.min
+cv.ridge$lambda.1se
+coef(cv.ridge, s=cv.ridge$lambda.min)
+```
+
+
+
+
+
+
+
+

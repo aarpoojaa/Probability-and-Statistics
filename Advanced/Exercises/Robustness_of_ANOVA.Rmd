@@ -1,0 +1,156 @@
+---
+title: "testing the robustness of ANOVA"
+author: "Brendt Gerics"
+date: '`r format(Sys.Date(), "%B %d, %Y")`'
+output:
+  pdf_document: default
+  html_document:
+    df_print: paged
+---
+
+## Introduction
+
+Please complete the following tasks regarding the data in R. You may work with a group of up to 5. Please generate a solution document in R markdown and upload the .Rmd document and a rendered  .doc, .docx, or .pdf document. Please turn in your work on Canvas. Your solution document should have your answers to the questions and should display the requested plots. Also, please upload the .csv file you generate. 
+
+## Data output
+
+For questions 1-4, please create a data frame with the columns given below, and one row of data, generated in the questions, replacing the NAs. Please name the data frame and the data file with your last name, adjusted as necessary to be a valid variable name. For example, mine is sim.name, eventually saved in name.csv. We will bind all these data frames together to get a clearer picture of the range of type 1 error rates for each of the scenarios.
+
+```{r}
+sim.name<-data.frame("normal"=NA,"unif.5"=NA,"unif.10"=NA,"unif.20"=NA,"unif.40"=NA,
+                     "gamma12.5"=NA,"gamma12.10"=NA,"gamma12.20"=NA,"gamma12.40"=NA,
+                     "gamma22.5"=NA,"gamma22.10"=NA,"gamma22.20"=NA,"gamma22.40"=NA,
+                     "unequal.5"=NA,"unequal.10"=NA,"unequal.20"=NA,"unequal.40"=NA)
+```
+
+
+
+
+
+## Starting Sample 
+
+The code below estimates the type 1 error rate (rejecting the null hypothesis when it's true) of ANOVA when the hypotheses are satisfied. Note that the type 1 error rate at the p=.05 cutoff is close to the theoretical value of .05. Please run this code, uncommenting the last two lines, with your own seed, and save the value in sim.your_name$normal.
+
+```{r}
+library(tidyverse)
+n<-5
+K<-4
+class<-rep(letters[1:K],each=n)
+reject<-function(n,K,class,a){
+  y<-rnorm(n*K)
+  m<-aov(y~class)
+  return(summary(m)[[1]]$Pr[1]<a)
+}
+
+set.seed(121989)
+sim.name$normal<-mean(replicate(5000,reject(n,K,class,.05)))
+
+```
+
+
+## Question 1: Robustness to Symmetric Non-Normality
+
+Examine the type 1 error rate for 4 samples drawn from a default uniform distribution at sample sizes 5, 10, 20, 40. Please remember to assign the output to your own version of the data frame. You are welcome to write more efficient code, provided it achieves the same effect. The commented lines illustrate one possibility for saving results into your data frame.
+
+```{r}
+n<-5
+K<-4
+class<-rep(letters[1:K],each=n)
+reject<-function(n,K,class,a){
+  sim.name$unif.5<-mean(replicate(5000,reject(5,K,class,.05)))
+  n<-10
+  class<-rep(letters[1:K],each=n)
+  sim.name$unif.10[1]<-mean(replicate(5000,reject(n,K,class,.05)))
+  n<-20
+  class<-rep(letters[1:K],each=n)
+  sim.name$unif.20[1]<-mean(replicate(5000,reject(n,K,class,.05)))
+  n<-40
+  class<-rep(letters[1:K],each=n)
+  sim.name$unif.40[1]<-mean(replicate(5000,reject(n,K,class,.05)))
+}
+
+
+```
+
+
+## Question 2: Robustness to Asymmetric Non-Normality
+
+Examine the type 1 error rate for 4 samples drawn from a Gamma(1,2) distribution at sample sizes 5, 10, 20, and 40. The R interface for the gamma distribution treats the first parameter as shape and the second as rate. We'll use this here: shape=1, rate=2. Please remember to assign the output to your own version of the data frame. You are welcome to write more efficient code
+
+```{r}
+n<-5
+K<-4
+class<-rep(letters[1:K],each=n)
+reject<-function(n,K,class,a){
+sim.name$gamma12.5[1]<-mean(replicate(5000,reject(5,K,class,.05)))
+n<-10
+class<-rep(letters[1:K],each=n)
+sim.name$gamma12.10[1]<-mean(replicate(5000,reject(n,K,class,.05)))
+n<-20
+class<-rep(letters[1:K],each=n)
+sim.name$gamma12.20[1]<-mean(replicate(5000,reject(n,K,class,.05)))
+n<-40
+class<-rep(letters[1:K],each=n)
+sim.name$gamma12.40[1]<-mean(replicate(5000,reject(n,K,class,.05)))
+}
+
+```
+
+## Question 3: Robustness to Asymmetric Non-Normality, cont.
+
+Examine the type 1 error rate for 4 samples drawn from a Gamma(2,2) distribution (shape=2, rate=2) at sample sizes 5, 10, 20, and 40. Please remember to assign the output to your own version of the data frame. You are welcome to write more efficient code.
+
+```{r}
+n<-5
+K<-4
+class<-rep(letters[1:K],each=n)
+reject<-function(n,K,class,a){
+sim.name$gamma22.5[1]<-mean(replicate(5000,reject(5,K,class,.05)))
+n<-10
+class<-rep(letters[1:K],each=n)
+sim.name$gamma22.10[1]<-mean(replicate(5000,reject(n,K,class,.05)))
+n<-20
+class<-rep(letters[1:K],each=n)
+sim.name$gamma22.20[1]<-mean(replicate(5000,reject(n,K,class,.05)))
+n<-40
+class<-rep(letters[1:K],each=n)
+sim.name$gamma22.40[1]<-mean(replicate(5000,reject(n,K,class,.05)))
+}
+
+
+
+```
+
+## Question 4: Robustness to Unequal Variances
+
+In this exercise, please set two of the groups to be Normally distributed with variance 1 and two to be Normally distributed with variance 2.
+
+```{r}
+n<-5
+
+class<-rep(letters[1:4],each=n)
+reject<-function(n,class,a){
+sim.name$unequal.5[1]<-mean(replicate(5000,reject(5,K,class,.05)))
+n<-10
+class<-rep(letters[1:K],each=n)
+sim.name$unequal.10[1]<-mean(replicate(5000,reject(n,K,class,.05)))
+n<-20
+class<-rep(letters[1:K],each=n)
+sim.name$unequal.20[1]<-mean(replicate(5000,reject(n,K,class,.05)))
+n<-40
+class<-rep(letters[1:K],each=n)
+sim.name$unequal.40[1]<-mean(replicate(5000,reject(n,K,class,.05)))
+}
+
+
+
+```
+
+
+## Question 5: Interpretation
+
+Please save your data frame to the appropriate .csv file, and examine the data frame. What do you conclude about the effects on the type 1 error rate for the hypothesis violations simulated above? Please remember to compare the two Gamma simulations.
+
+```{r}
+write.csv(sim.name,file="name.csv")
+```

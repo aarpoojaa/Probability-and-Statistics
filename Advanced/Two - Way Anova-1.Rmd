@@ -1,0 +1,106 @@
+---
+title: "Two way ANOVA"
+author: "Pooja Radhakrishnan"
+date: "14 April 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+help(crabs)
+library(MASS)
+names(crabs)
+dim(crabs)
+attach(crabs)
+table(sp,sex)
+crab_df <- crabs
+```
+Problem Statement: Should we consider the variables gender and species to be the deterministic factors of crab morphology?
+
+Here, the categorical variables are: gender and species. There are many response variables namely: Body Depth (BD), Carapace (#the hard shell on top of crab) Length(CL), Carapace Width (CW), Frontal Lobe Size (FL), Rear Width (RW). Here, for performing two-way ANOVA, I pick Body Depth (BD) as my response variable.
+
+But before proceeding to implement the two-way ANOVA, there are a few requisites to be met by the variables:
+
+a) The outcome/response vairable must be continuous.
+```{r}
+str(crab_df$BD)
+```
+So, yes, the response variable is continuous.
+
+b) The predictor variables must be categorical.
+```{r}
+is.factor(crab_df$sp)
+is.factor(crab_df$sex)
+levels(crab_df$sp)
+levels(crab_df$sex)
+```
+Yes, the predictor variables are categorical.
+
+To check how the variables are closely related to each other, we perform the following to determine the correlation:
+
+Determine correlation from plot:
+```{r}
+plot(data.frame(BD,CL,CW,FL,RW))
+```
+
+Determine correation uing *cor()* function statistically:
+```{r}
+cor(cbind(BD,CL,CW,FL,RW))
+cat("All the values are closer to 1, which means they are closely related and behave similarly.")
+```
+
+Checking the values of mean by grouping the categorical and the response variable individually:
+```{r}
+tapply(BD, sex, mean)
+tapply(BD, sp, mean)
+```
+
+Checking the value of mean by grouping botht he categorical predictor variables and the response variable:
+```{r}
+tapply(BD, list(sex,sp), mean)
+```
+
+The grand mean of the response variable is:
+```{r}
+mean(BD)
+```
+
+#**Implementation of ANOVA**
+Now let us implement ANOVA technique to determine if the cetegorical variables gender adn species have significant effect in determining the response variable Body Depth.
+
+Since there are two categorical variables and one continuous variable, a two-way ANOVA is used.
+
+There are two variants of two-way ANOVA:
+* Two-way ANOVA with interaction
+* Two-way ANOVA without interaction
+
+#Two way ANOVA with interaction:
+We perform this to check if there's a relation between both the categorical variables to determine the response variable.
+```{r}
+m2i = aov(BD ~ sex*sp) 
+summary(m2i)
+coef(m2i)
+plot(m2i)
+```
+
+#Two way ANOVA without interaction:
+We perform this variant to check individually about the effect of the predictor variables onthe response variable.
+```{r}
+m2n = aov(BD ~ sex+sp)
+summary(m2n)
+coef(m2n)
+plot(m2n)
+```
+From the summaries of both the variant models, both gender and species together, i.e. two-way ANOVA with interaction have significant effect on the response variable. Species alone has a much more significant effect on Body Depth.
+
+The residuals of both the variants of two-way ANOVA follow normal distribution as the points lie close to the reference line.
+
+We can assess the normality by using *shapiro.test()*
+```{r}
+shapiro.test(crab_df$BD)
+```
+The p-value is > 0.05. Therefore, normality is assured.
+
